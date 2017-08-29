@@ -1,13 +1,8 @@
 #include <vector>
 
-#include "caffe/blob.hpp"
-#include "caffe/common.hpp"
 #include "caffe/filler.hpp"
-#include "caffe/layer.hpp"
-#include "caffe/util/io.hpp"
+#include "caffe/layers/cinner_product_layer.hpp"
 #include "caffe/util/math_functions.hpp"
-#include "caffe/vision_layers.hpp"
-#include <cmath>
 
 namespace caffe {
 
@@ -146,14 +141,15 @@ template <typename Dtype>
 void CInnerProductLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
     const vector<Blob<Dtype>*>& top) {    
 
-  const Dtype* weight = this->blobs_[0]->mutable_gpu_data();  
+  const Dtype* weight = this->blobs_[0]->gpu_data();  
   Dtype* weightMask = this->blobs_[2]->mutable_gpu_data();
   Dtype* weightTmp = this->weight_tmp_.mutable_gpu_data();  
+  
   const Dtype* bias = NULL;
   Dtype* biasMask = NULL;
   Dtype* biasTmp = NULL;
   if (this->bias_term_) {  
-    bias = this->blobs_[1]->mutable_gpu_data();   
+    bias = this->blobs_[1]->gpu_data();   
     biasMask = this->blobs_[3]->mutable_gpu_data();
     biasTmp = this->bias_tmp_.mutable_gpu_data();
   }   
@@ -213,13 +209,15 @@ void CInnerProductLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
   if (M_ == 1) {
     caffe_gpu_gemv<Dtype>(CblasNoTrans, N_, K_, (Dtype)1.,
                          weightTmp, bottom_data, (Dtype)0., top_data);
-    if (this->bias_term_)
+    if (bias_term_)
       caffe_gpu_axpy<Dtype>(N_, bias_multiplier_.cpu_data()[0],
                             biasTmp, top_data);
   } else {
-    caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasTrans, M_, N_, K_, (Dtype)1.,
+    caffe_gpu_gemm<Dtype>(CblasNoTrans, 
+                          transpose_ ? CblasNoTrans : CblasTrans, 
+                          M_, N_, K_, (Dtype)1.,
                           bottom_data, weightTmp, (Dtype)0., top_data);
-    if (this->bias_term_)
+    if (bias_term_)
       caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, M_, N_, 1, (Dtype)1.,
                             bias_multiplier_.gpu_data(),
                             biasTmp, (Dtype)1., top_data);
@@ -239,8 +237,21 @@ void CInnerProductLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
 		CCMaskApply<Dtype><<<CAFFE_GET_BLOCKS(this->blobs_[2]->count()),
       CAFFE_CUDA_NUM_THREADS>>>( this->blobs_[2]->count(), weight_diff, weightMask, weight_diff);
     CUDA_POST_KERNEL_CHECK; 
+    if (transpose_) {
+      caffe_gpu_gemm<Dtype>(CblasTrans, CblasNoTrans,
+          K_, N_, M_,
+          (Dtype)1., bottom_data, top_diff,
+          (Dtype)1., this->blobs_[0]->mutable_gpu_diff());
+    } else {
+      caffe_gpu_gemm<Dtype>(CblasTrans, CblasNoTrans,
+          N_, K_, M_,
+          (Dtype)1., top_diff, bottom_data,
+          (Dtype)1., this->blobs_[0]->mutable_gpu_diff());
+    }
+/*
     caffe_gpu_gemm<Dtype>(CblasTrans, CblasNoTrans, N_, K_, M_, (Dtype)1.,
         top_diff, bottom_data, (Dtype)1., weight_diff);
+*/
   }
   if (bias_term_ && this->param_propagate_down_[1]) {
 		const Dtype* biasMask = this->blobs_[3]->gpu_data();
@@ -255,9 +266,22 @@ void CInnerProductLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
   if (propagate_down[0]) {
 		const Dtype* weightTmp = this->weight_tmp_.gpu_data();        
     // Gradient with respect to bottom data
+    if (transpose_) {
+      caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasTrans,
+          M_, K_, N_,
+          (Dtype)1., top_diff, this->blobs_[0]->gpu_data(),
+          (Dtype)0., bottom[0]->mutable_gpu_diff());
+    } else {
+      caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans,
+          M_, K_, N_,
+         (Dtype)1., top_diff, this->blobs_[0]->gpu_data(),
+         (Dtype)0., bottom[0]->mutable_gpu_diff());
+    }
+/*
     caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, M_, K_, N_, (Dtype)1.,
         top_diff, weightTmp, (Dtype)0.,
         bottom[0]->mutable_gpu_diff());
+*/
   }
 }
 

@@ -177,6 +177,22 @@ class Net {
   inline const vector<Blob<Dtype>*>& learnable_params() const {
     return learnable_params_;
   }
+  
+  /********** for neural network model compression **********/
+  inline const vector<int>& mask_param_ids() const {
+    return mask_param_ids_;
+  }
+  inline const vector<int>& learnable_param_ids() const {
+    return learnable_param_ids_;
+  }
+  inline void set_current_iter_num(const int iter_num) {
+    iter_ = iter_num;
+    for (int layer_id = 0; layer_id < layers_.size(); ++layer_id) {
+      layers_[layer_id]->set_current_iter_num(iter_num);
+    }
+  }
+  /**********************************************************/
+
   /// @brief returns the learnable parameter learning rate multipliers
   inline const vector<float>& params_lr() const { return params_lr_; }
   inline const vector<bool>& has_params_lr() const { return has_params_lr_; }
@@ -320,6 +336,12 @@ class Net {
    * and learnable_params_[learnable_param_ids_[i]] gives its owner.
    */
   vector<int> learnable_param_ids_;
+
+  /********** for neural network model compression **********/
+  /// the index of mask parameters
+  vector<int> mask_param_ids_;   
+  /**********************************************************/
+
   /// the learning rate multipliers for learnable_params_
   vector<float> params_lr_;
   vector<bool> has_params_lr_;

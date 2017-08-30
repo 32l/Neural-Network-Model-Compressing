@@ -291,6 +291,11 @@ class Layer {
     param_propagate_down_[param_id] = value;
   }
 
+  /********** for neural network model compression **********/
+  inline void set_current_iter_num(const int iter_num) {
+    iter_ = iter_num;
+  }
+  /**********************************************************/
 
  protected:
   /** The protobuf that stores the layer parameters */

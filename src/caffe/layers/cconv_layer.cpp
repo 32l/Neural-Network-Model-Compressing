@@ -1,5 +1,6 @@
 #include <vector>
 
+#include "caffe/filler.hpp"
 #include "caffe/layers/cconv_layer.hpp"
 
 namespace caffe {
@@ -47,7 +48,7 @@ void CConvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
 }
 
 template <typename Dtype>
-void ConvolutionLayer<Dtype>::compute_output_shape() {
+void CConvolutionLayer<Dtype>::compute_output_shape() {
   const int* kernel_shape_data = this->kernel_shape_.cpu_data();
   const int* stride_data = this->stride_.cpu_data();
   const int* pad_data = this->pad_.cpu_data();
@@ -83,21 +84,21 @@ void CConvolutionLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
 		// Calculate the mean and standard deviation of learnable parameters 
     if (this->std==0 && this->iter_==0){
       Dtype sum_mu = 0, sum_square = 0;
-			unsigned int ncount = 0;
-			for (unsigned int k = 0;k < this->blobs_[0]->count(); ++k) {
-        Dtype mtw = weightMask[k]*weight[k]
-        sum_mu += fabs(wm);
+      unsigned int ncount = 0;
+      for (unsigned int k = 0;k < this->blobs_[0]->count(); ++k) {
+        Dtype mtw = weightMask[k]*weight[k];
+        sum_mu += fabs(mtw);
         sum_square += mtw*weight[k];
-				if (mtw!=0) ncount++;
-			}
-			if (this->bias_term_) {
-				for (unsigned int k = 0;k < this->blobs_[1]->count(); ++k) {
+        if (mtw!=0) ncount++;
+      }
+      if (this->bias_term_) {
+        for (unsigned int k = 0;k < this->blobs_[1]->count(); ++k) {
           Dtype mtb = biasMask[k]*bias[k];
           sum_mu += fabs(mtb);
           sum_square += mtb * bias[k];
-					if (mtb!=0) ncount++;
-				}       
-			}
+	  if (mtb!=0) ncount++;
+	}       
+      }
       this->mu = sum_mu / ncount;
       this->std = sqrt((sum_square - ncount * sum_mu*sum_mu)/ncount);
       // this->std -= ncount*mu*mu; 

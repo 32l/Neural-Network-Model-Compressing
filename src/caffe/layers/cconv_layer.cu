@@ -196,7 +196,7 @@ void CConvolutionLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
     const Dtype* bottom_data = bottom[i]->gpu_data();
     Dtype* top_data = top[i]->mutable_gpu_data();
     for (int n = 0; n < this->num_; ++n) {
-      this->forward_gpu_gemm(bottom_data + n * this->bottom_dim_), weightTmp,
+      this->forward_gpu_gemm(bottom_data + n * this->bottom_dim_, weightTmp,
           top_data + n * this->top_dim_);
       if (this->bias_term_) {
         this->forward_gpu_bias(top_data + n * this->top_dim_, biasTmp);

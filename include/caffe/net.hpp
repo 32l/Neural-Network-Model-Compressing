@@ -293,6 +293,10 @@ class Net {
   string name_;
   /// @brief The phase: TRAIN or TEST
   Phase phase_;
+  /********** for neural network model compression **********/
+  /// @brief The current iteration number 
+  int iter_;  
+  /**********************************************************/
   /// @brief Individual layers in the net
   vector<shared_ptr<Layer<Dtype> > > layers_;
   vector<string> layer_names_;

@@ -58,7 +58,7 @@ layer {
   cinner_product_param {
     gamma: 0.0001
     power: 1
-    c_rate: 3
+    c_rate: 2
     iter_stop: 14000  
     weight_mask_filler {
       type: "constant"
@@ -106,7 +106,7 @@ layer {
   cinner_product_param {
     gamma: 0.0001
     power: 1
-    c_rate: 3
+    c_rate: 2
     iter_stop: 14000  
     weight_mask_filler {
       type: "constant"
@@ -115,8 +115,8 @@ layer {
     bias_mask_filler {
       type: "constant"
       value: 1
-    }        
-  }   
+    }
+  } 
 }
 layer {
   name: "pool2"

@@ -761,8 +761,8 @@ void Net<Dtype>::CopyTrainedLayersFrom(const NetParameter& param) {
     /********** for neural network model compression **********/
     if (strcmp(layers_[target_layer_id]->type(),"CInnerProduct") == 0 || 
       strcmp(layers_[target_layer_id]->type(),"CConvolution" ) == 0 ||
-      strcmp(layers_[target_layer_id]->type(),"TPInnerPorduct" == 0) ||
-      strcmp(layers_[target_layer_id]->type(),"TPConvvolution" == 0) ) {
+      strcmp(layers_[target_layer_id]->type(),"TPInnerPorduct") == 0 ||
+      strcmp(layers_[target_layer_id]->type(),"TPConvvolution") == 0 ) {
       if(target_blobs.size() > source_layer.blobs_size()) {
         for (int j = 0; j < source_layer.blobs_size(); ++j) {
           if (!target_blobs[j]->ShapeEquals(source_layer.blobs(j))) {

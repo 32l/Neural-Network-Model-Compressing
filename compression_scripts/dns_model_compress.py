@@ -7,6 +7,10 @@ import os
 import numpy as np
 #  import caffe_pb2
 
+def outputLayerInfo(layername, nz_percentage):
+    print "layer %s's nonzero percentage: %f"%(layername, nz_percentage)
+
+
 compressed_model = "cmprd.model"
 
 # TODO: 
@@ -38,12 +42,45 @@ net = caffe.Net(prototxt_file, caffemodel, caffe.TEST)
 f = open(compressed_model, 'wb')
 
 # with open(compressed_model, 'wb') as f:
+num_total = 0
+num_total_nonzero = 0
+num_conv = np.zeros(2, dtype=np.int32)
+num_nz_conv = np.zeros(2, dtype=np.int32)
+num_ip = np.zeros(2, dtype=np.int32)
+num_nz_ip = np.zeros(2, dtype=np.int32)
 
 for param_name in net.params.keys():
     if 'conv' in param_name:
-        pass
+        conv_w = net.params[param_name][0].data.astype(np.float32)
+        conv_b = net.params[param_name][0].data.astype(np.float32)
+        nz_idx_w = np.nonzero(conv_w) 
+        nz_conv_w = conv_w[nz_idx_w]
+        nz_idx_b = np.nonzero(conv_b)
+        nz_conv_b = conv_b(nz_idx_b)
+
+        num_nz_conv[0] = nz_conv_w.size
+        num_nz_conv[1] = nz_conv_b.size
+
+        num_nz_conv.tofile(f)
+        nz_conv_w.tofile(f)
+        nz_conv_b.tofile(f)
+
     elif ('ip' in param_name or 'fc' in param_name):
-        pass
+        ip_w = net.params[param_name][0].data.astype(np.float32)
+        ip_b = net.params[param_name][0].data.astype(np.float32)
+
+        nz_idx_w = np.nonzero(ip_w) 
+        nz_ip_w = conv_w[nz_idx_w]
+        nz_idx_b = np.nonzero(ip_b)
+        nz_ip_b = conv_b(nz_idx_b)
+
+        num_nz_ip[0] = nz_ip_w.size
+        num_nz_ip[1] = nz_ip_b.size
+
+        num_nz_ip.tofile(f)
+        nz_ip_w.tofile(f)
+        nz_ip_b.tofile(f)
+
     else:
         pass
 

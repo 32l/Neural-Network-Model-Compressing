@@ -64,7 +64,7 @@ layer {
     }
   }
   cconvolution_param {
-    gamma: 0.0001
+    gamma: 0.0000125
     power: 1
     c_rate: 2
     iter_stop: 450000  
@@ -134,7 +134,7 @@ layer {
     }
   }
   cconvolution_param {
-    gamma: 0.0001
+    gamma: 0.0000125
     power: 1
     c_rate: 2
     iter_stop: 450000  
@@ -203,7 +203,7 @@ layer {
     }
   }
   cconvolution_param {
-    gamma: 0.0001
+    gamma: 0.0000125
     power: 1
     c_rate: 2
     iter_stop: 450000  
@@ -251,7 +251,7 @@ layer {
     }
   }
   cconvolution_param {
-    gamma: 0.0001
+    gamma: 0.0000125
     power: 1
     c_rate: 2
     iter_stop: 450000  
@@ -299,7 +299,7 @@ layer {
     }
   }
   cconvolution_param {
-    gamma: 0.0001
+    gamma: 0.0000125
     power: 1
     c_rate: 2
     iter_stop: 450000  

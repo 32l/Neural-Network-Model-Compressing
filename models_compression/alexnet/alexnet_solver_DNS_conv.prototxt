@@ -11,4 +11,4 @@ momentum: 0.9
 weight_decay: 0.0005
 snapshot: 10000
 snapshot_prefix: "models_compression/alexnet/DNS_alexnet_conv"
-solver_mode: GPU
+solver_mode: CPU

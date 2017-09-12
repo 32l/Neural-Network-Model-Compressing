@@ -102,3 +102,6 @@ MANIFEST-*
 *.gz
 *.tar
 *.zip
+
+# temp files and folders
+modelscomtest

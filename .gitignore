@@ -105,3 +105,4 @@ MANIFEST-*
 
 # temp files and folders
 modelscomtest
+compression_scripts/*.dat

@@ -1,6 +1,11 @@
+import os, sys
+
+caffe_root = os.environ["CAFFE_ROOT"]
+sys.path.append(caffe_root+"/python/caffe/proto")
+
 import caffe_pb2
 
-caffemodel_filename = "/home/users/xieqikai/Dynamic-Network-Surgery-2power_v3_gpu/examples/mnist/tp100_iter_100.caffemodel"
+caffemodel_filename = "/home/users/xieqikai/myGitRepo/caffe-0828-compress/models/bvlc_reference_caffenet/bvlc_reference_caffenet.caffemodel"
 
 model = caffe_pb2.NetParameter()
 
@@ -10,11 +15,11 @@ model.ParseFromString(f.read())
 
 f.close()
 
-save_filename = "/home/users/xieqikai/Dynamic-Network-Surgery-2power_v3_gpu/tp_100.dat"
+save_filename = "alexnet.dat"
 
 f = open(save_filename, 'w')
 
-print 'model type: ', type(model)
+# print 'model type: ', type(model)
 print >> f,model
 # print >> f,model.__str__
 

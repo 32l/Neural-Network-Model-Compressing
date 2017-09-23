@@ -61,8 +61,8 @@ Makefile.config
 # Data and models are either
 # 1. reference, and not casually committed
 # 2. custom, and live on their own unless they're deliberated contributed
-data/*
-models/*
+# data/*
+# models/*
 *.caffemodel
 *.caffemodel.h5
 *.solverstate
@@ -97,3 +97,11 @@ LOCK
 LOG*
 CURRENT
 MANIFEST-*
+
+# zip files 
+*.gz
+*.tar
+*.zip
+
+# temp files and folders
+modelscomtest

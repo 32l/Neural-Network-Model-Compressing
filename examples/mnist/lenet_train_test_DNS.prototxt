@@ -55,7 +55,7 @@ layer {
       type: "constant"
     }
   }
-  cinner_product_param {
+  cconvolution_param {
     gamma: 0.0001
     power: 1
     c_rate: 2
@@ -103,7 +103,7 @@ layer {
       type: "constant"
     }
   }
-  cinner_product_param {
+  cconvolution_param {
     gamma: 0.0001
     power: 1
     c_rate: 2

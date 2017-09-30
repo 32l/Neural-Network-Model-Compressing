@@ -45,6 +45,9 @@ net = caffe.Net(prototxt, caffe.TEST, weights=dns_model)
 net_target = caffe.Net(target_prototxt, caffe.TEST)
 param_name_list = filter(lambda x: "conv" in x or "ip" in x or "fc" in x, net.params.keys())
 
+# number of decorative marks
+num_mark = 55
+
 def dns_to_target(wb, wb_dns, wb_dns_mask):
     data = np.zeros(wb_dns.size)
     data[wb_dns_mask == 1] = wb_dns[wb_dns_mask == 1]
@@ -54,8 +57,10 @@ def dns_to_target(wb, wb_dns, wb_dns_mask):
 def display_layer_info(lname, w_mask, b_mask, total_params, params_kept):
     w_kept = np.sum(w_mask)
     b_kept = np.sum(b_mask)
+    print "="*num_mark
     print "%s layer w: %d/%d (%f %%) kept"%(lname, w_kept, w_mask.size, 100.0 * w_kept/ w_mask.size)
     print "%s       b: %d/%d (%f %%) kept"%(' '*len(lname), b_kept, b_mask.size, 100.0*b_kept/ b_mask.size)
+    print "%s   total: %d/%d (%f %%) kept"%(' '*len(lname), w_kept+b_kept, w_mask.size+b_mask.size, 100*(w_kept+b_kept)/(w_mask.size+b_mask.size))
     return (total_params + w_mask.size + b_mask.size, params_kept + w_kept + b_kept)
     
 def normal_to_target(wb, wb_src):
@@ -66,7 +71,7 @@ def normal_to_target(wb, wb_src):
 # Assuming the net and net_target have the same params, and it should be so.
 total_params = 0
 params_kept = 0
-print dir(net.params[param_name_list[0]])
+# print dir(net.params[param_name_list[0]])
 
 for param_name in param_name_list:
     if len(net.params[param_name]) == 4:
@@ -90,7 +95,14 @@ for param_name in param_name_list:
 
 net_target.save(target)
 if total_params != 0 and params_kept != 0:
-    print "Statistics: %d/ %d (%f %%) kept"%(params_kept, total_params, 100.0*params_kept/ total_params)
+    print " "
+    print "*"*num_mark
+    print " "
+    print "Final Statistics: %d/ %d (%f %%) kept"%(params_kept, total_params, 100.0*params_kept/ total_params)
+    print "Compression Rate: %f"%(total_params / params_kept)
+    print " "
+    print "*"*num_mark
 print "Model has been converted from DNS to normal, saved as %s"%(target)
+print " "
 
 

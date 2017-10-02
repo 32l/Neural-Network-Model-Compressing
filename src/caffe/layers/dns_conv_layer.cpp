@@ -1,28 +1,28 @@
 #include <vector>
 
 #include "caffe/filler.hpp"
-#include "caffe/layers/cconv_layer.hpp"
+#include "caffe/layers/dns_conv_layer.hpp"
 
 namespace caffe {
 
 template <typename Dtype>
-void CConvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
+void DNSConvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {
   BaseConvolutionLayer <Dtype>::LayerSetUp(bottom, top); 
   
   /************ For dynamic network surgery ***************/
-  CConvolutionParameter cconv_param = this->layer_param_.cconvolution_param();
+  DNSConvolutionParameter dsn_conv_param = this->layer_param_.dns_convolution_param();
   
   if(this->blobs_.size()==2 && (this->bias_term_)){
     this->blobs_.resize(4);
     // Intialize and fill the weightmask & biasmask
     this->blobs_[2].reset(new Blob<Dtype>(this->blobs_[0]->shape()));
     shared_ptr<Filler<Dtype> > weight_mask_filler(GetFiller<Dtype>(
-        cconv_param.weight_mask_filler()));
+        dsn_conv_param.weight_mask_filler()));
     weight_mask_filler->Fill(this->blobs_[2].get());
     this->blobs_[3].reset(new Blob<Dtype>(this->blobs_[1]->shape()));
     shared_ptr<Filler<Dtype> > bias_mask_filler(GetFiller<Dtype>(
-        cconv_param.bias_mask_filler()));
+        dsn_conv_param.bias_mask_filler()));
     bias_mask_filler->Fill(this->blobs_[3].get());    
   }  
   else if(this->blobs_.size()==1 && (!this->bias_term_)){
@@ -30,7 +30,7 @@ void CConvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
     // Intialize and fill the weightmask
     this->blobs_[1].reset(new Blob<Dtype>(this->blobs_[0]->shape()));
     shared_ptr<Filler<Dtype> > bias_mask_filler(GetFiller<Dtype>(
-        cconv_param.bias_mask_filler()));
+        dsn_conv_param.bias_mask_filler()));
     bias_mask_filler->Fill(this->blobs_[1].get());      
   }  
   
@@ -39,16 +39,17 @@ void CConvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
   this->bias_tmp_.Reshape(this->blobs_[1]->shape());  
   
   // Intialize the hyper-parameters
-  this->std = 0;this->mu = 0;   
-  this->gamma = cconv_param.gamma(); 
-  this->power = cconv_param.power();
-  this->crate = cconv_param.c_rate();  
-  this->iter_stop_ = cconv_param.iter_stop();
+  this->std_ = 0;
+  this->mu_ = 0;   
+  this->gamma_ = dsn_conv_param.gamma(); 
+  this->power_ = dsn_conv_param.power();
+  this->c_rate_ = dsn_conv_param.c_rate();  
+  this->iter_stop_ = dsn_conv_param.iter_stop();
   /********************************************************/
 }
 
 template <typename Dtype>
-void CConvolutionLayer<Dtype>::compute_output_shape() {
+void DNSConvolutionLayer<Dtype>::compute_output_shape() {
   const int* kernel_shape_data = this->kernel_shape_.cpu_data();
   const int* stride_data = this->stride_.cpu_data();
   const int* pad_data = this->pad_.cpu_data();
@@ -65,7 +66,7 @@ void CConvolutionLayer<Dtype>::compute_output_shape() {
 }
 
 template <typename Dtype>
-void CConvolutionLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
+void DNSConvolutionLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {  
       
   const Dtype* weight = this->blobs_[0]->cpu_data();    
@@ -75,14 +76,14 @@ void CConvolutionLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
   Dtype* biasMask = NULL;  
   Dtype* biasTmp = NULL;
   if (this->bias_term_) {
-    bias = this->blobs_[1]->mutable_cpu_data(); 
+    bias = this->blobs_[1]->cpu_data(); 
     biasMask = this->blobs_[3]->mutable_cpu_data();
     biasTmp = this->bias_tmp_.mutable_cpu_data();
   }
 
   if (this->phase_ == TRAIN){
     // Calculate the mean and standard deviation of learnable parameters 
-    if (this->std==0 && this->iter_ ==0){
+    if (this->std_==0 && this->iter_ ==0){
       Dtype sum_mu = 0, sum_square = 0;
       unsigned int nz_w = 0, nz_b = 0, ncount = 0;
       for (unsigned int k = 0;k < this->blobs_[0]->count(); ++k) {
@@ -100,63 +101,38 @@ void CConvolutionLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
         }       
       }
       ncount = nz_w + nz_b;
-      this->mu = sum_mu / ncount;
-      this->std = sqrt((sum_square - ncount * sum_mu*sum_mu)/ncount);
-      // this->std -= ncount*mu*mu; 
-      // this->std /= ncount; this->std = sqrt(std);
-
-      LOG(INFO)<< "mu:" <<mu<<" "<<"std:"<<std<<" "
-               << nz_w <<"/" <<this->blobs_[0]->count() <<"(" << nz_w/this->blobs_[0]->count() << ")" << " "
-               << nz_b <<"/" <<this->blobs_[1]->count() <<"(" << nz_b/this->blobs_[1]->count() << ")" << " "
-/*
+      this->mu_ = sum_mu / ncount;
+      this->std_ = sqrt((sum_square - ncount * sum_mu*sum_mu)/ncount);
+      // output the percentage of kept parameters.
+      LOG(INFO)<< "mu_:" <<mu_<<" "<<"std_:"<<std_<<" "
+               << nz_w <<"/" <<this->blobs_[0]->count() 
+               << "(" << Dtype(nz_w)/this->blobs_[0]->count() << ")" << " "
+               << nz_b <<"/" <<this->blobs_[1]->count() 
+               << "(" << Dtype(nz_b)/this->blobs_[1]->count() << ")" << " "
                << ncount<<"/" << this->blobs_[0]->count()+this->blobs_[1]->count()
-               << ncount/(this->blobs_[0]->count()+this->blobs_[1]->count())
-*/
+               << "(" <<Dtype(ncount)/(this->blobs_[0]->count()+this->blobs_[1]->count()) << ")"
                << "\n";
-/*
-      LOG(INFO)<< "mu" <<mu<<" "<<"std"<<std<<" "<<ncount<<"/"
-               << this->blobs_[0]->count()+this->blobs_[1]->count() 
-               << ncount/(this->blobs_[0]->count()+this->blobs_[1]->count()) 
-               << "\n"; 
-*/
     }
-    
-    // Demonstrate the sparsity of compressed convolutional layer
-    /********************************************************/
-    /*if(this->iter_%1000==0){
-      unsigned int ncount = 0;
-      for (unsigned int k = 0;k < this->blobs_[0]->count(); ++k) {
-        if (weightMask[k]*weight[k]!=0) ncount++;
-      }
-      if (this->bias_term_) {
-        for (unsigned int k = 0;k < this->blobs_[1]->count(); ++k) {
-          if (biasMask[k]*bias[k]!=0) ncount++;
-        }       
-      }
-      LOG(INFO)<<ncount<<"\n";        
-    }*/ 
-    /********************************************************/    
-    
     // Calculate the weight mask and bias mask with probability
-    Dtype r = static_cast<Dtype>(rand())/static_cast<Dtype>(RAND_MAX);
-    if (pow(1+(this->gamma)*(this->iter_),-(this->power))>r && (this->iter_)<(this->iter_stop_)) {  
+    Dtype r_ = static_cast<Dtype>(rand())/static_cast<Dtype>(RAND_MAX);
+    if (pow(1+(this->gamma_)*(this->iter_),-(this->power_))>r_ && (this->iter_)<(this->iter_stop_)) {  
       for (unsigned int k = 0;k < this->blobs_[0]->count(); ++k) {
-        if (weightMask[k]==1 && fabs(weight[k])<=0.9*std::max(mu+crate*std,Dtype(0))) 
+        if (weightMask[k]==1 && fabs(weight[k])<=0.9*std_::max(mu_+c_rate_*std_,Dtype(0))) 
           weightMask[k] = 0;
-        else if (weightMask[k]==0 && fabs(weight[k])>1.1*std::max(mu+crate*std,Dtype(0)))
+        else if (weightMask[k]==0 && fabs(weight[k])>1.1*std_::max(mu_+c_rate_*std_,Dtype(0)))
           weightMask[k] = 1;
       } 
       if (this->bias_term_) {       
         for (unsigned int k = 0;k < this->blobs_[1]->count(); ++k) {
-          if (biasMask[k]==1 && fabs(bias[k])<=0.9*std::max(mu+crate*std,Dtype(0))) 
+          if (biasMask[k]==1 && fabs(bias[k])<=0.9*std_::max(mu_+c_rate_*std_,Dtype(0))) 
             biasMask[k] = 0;
-          else if (biasMask[k]==0 && fabs(bias[k])>1.1*std::max(mu+crate*std,Dtype(0)))
+          else if (biasMask[k]==0 && fabs(bias[k])>1.1*std_::max(mu_+c_rate_*std_,Dtype(0)))
             biasMask[k] = 1;
-        }    
+        } 
       } 
     }
   } 
-    
+
   // Calculate the current (masked) weight and bias
   for (unsigned int k = 0;k < this->blobs_[0]->count(); ++k) {
     weightTmp[k] = weight[k]*weightMask[k];
@@ -182,7 +158,7 @@ void CConvolutionLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
 }
 
 template <typename Dtype>
-void CConvolutionLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
+void DNSConvolutionLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
       const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) {
   const Dtype* weightTmp = this->weight_tmp_.cpu_data();  
   const Dtype* weightMask = this->blobs_[2]->cpu_data();
@@ -193,12 +169,9 @@ void CConvolutionLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
     if (this->bias_term_ && this->param_propagate_down_[1]) {
       const Dtype* biasMask = this->blobs_[3]->cpu_data();
       Dtype* bias_diff = this->blobs_[1]->mutable_cpu_diff();    
-      /************ not necessary *************/
-      /*
       for (unsigned int k = 0;k < this->blobs_[1]->count(); ++k) {
         bias_diff[k] = bias_diff[k]*biasMask[k];
       }
-      ****************************************/
       for (int n = 0; n < this->num_; ++n) {
         this->backward_cpu_bias(bias_diff, top_diff + n * this->top_dim_);
       }
@@ -206,12 +179,9 @@ void CConvolutionLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
     if (this->param_propagate_down_[0] || propagate_down[i]) {
       const Dtype* bottom_data = bottom[i]->cpu_data();
       Dtype* bottom_diff = bottom[i]->mutable_cpu_diff(); 
-      /************ net necessary *************/
-      /*
       for (unsigned int k = 0;k < this->blobs_[0]->count(); ++k) {
         weight_diff[k] = weight_diff[k]*weightMask[k];
       }
-      *****************************************/
       for (int n = 0; n < this->num_; ++n) {
         // gradient w.r.t. weight. Note that we will accumulate diffs.
         if (this->param_propagate_down_[0]) {
@@ -229,10 +199,10 @@ void CConvolutionLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
 }
 
 #ifdef CPU_ONLY
-STUB_GPU(CConvolutionLayer);
+STUB_GPU(DNSConvolutionLayer);
 #endif
 
-INSTANTIATE_CLASS(CConvolutionLayer);
-REGISTER_LAYER_CLASS(CConvolution);
+INSTANTIATE_CLASS(DNSConvolutionLayer);
+REGISTER_LAYER_CLASS(DNSConvolution);
 
 }  // namespace caffe

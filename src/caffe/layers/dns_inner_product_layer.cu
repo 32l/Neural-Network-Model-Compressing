@@ -1,13 +1,15 @@
 #include <vector>
 
-#include "caffe/layers/cconv_layer.hpp"
+#include "caffe/filler.hpp"
+#include "caffe/layers/dns_inner_product_layer.hpp"
+#include "caffe/util/math_functions.hpp"
 
 namespace caffe {
 
 // The constant NUM_THREADS should be equal to the value in CCMomentCalc
 template <typename Dtype>
 __global__ void CCMomentCollect(const int n, const Dtype* wb, const Dtype* mask,
-    Dtype* mu, Dtype* std, unsigned int* count ) {  
+    Dtype* mu_, Dtype* std_, unsigned int* count ) {  
   const int NUM_THREADS = 512;  
   __shared__ Dtype param [4*NUM_THREADS]; 
   __shared__ unsigned int tcount [2*NUM_THREADS];   
@@ -41,8 +43,8 @@ __global__ void CCMomentCollect(const int n, const Dtype* wb, const Dtype* mask,
     __syncthreads();  
   }
   if (t == 0){
-    mu   [blockIdx.x] = param[0];
-    std  [blockIdx.x] = param[2*NUM_THREADS];
+    mu_   [blockIdx.x] = param[0];
+    std_  [blockIdx.x] = param[2*NUM_THREADS];
     count[blockIdx.x] = tcount[0]; 
   }      
 }
@@ -76,11 +78,11 @@ __global__ void CCNzeroCollect(const int n, const Dtype* mask, unsigned int* cou
 
 template <typename Dtype>
 __global__ void CCMaskCalc(const int n, const Dtype* wb,
-    Dtype* mask, Dtype mu, Dtype std, Dtype r) {
+    Dtype* mask, Dtype mu_, Dtype std_, Dtype r_) {
   CUDA_KERNEL_LOOP(index, n) {
-    if (mask[index]==1 && fabs(wb[index])<=0.9*max(mu+r*std,Dtype(0))) 
+    if (mask[index]==1 && fabs(wb[index])<=0.9*max(mu_+r_*std_,Dtype(0))) 
       mask[index] = 0;
-    else if (mask[index]==0 && fabs(wb[index])>1.1*max(mu+r*std,Dtype(0)))
+    else if (mask[index]==0 && fabs(wb[index])>1.1*max(mu_+r_*std_,Dtype(0)))
       mask[index] = 1;
   }
 }
@@ -94,7 +96,7 @@ __global__ void CCMaskApply(const int n, const Dtype* wb,
 }
 
 template <typename Dtype>
-void CCMomentCalc(const int n, const Dtype* wb, const Dtype* mask, Dtype* mu, Dtype* std, unsigned int* ncount){ 
+void CCMomentCalc(const int n, const Dtype* wb, const Dtype* mask, Dtype* mu_, Dtype* std_, unsigned int* ncount){ 
   const unsigned int NUM_THREADS = 512;
   Dtype* pmu_g; Dtype* pstd_g; unsigned int* pncount_g;
   Dtype* pmu_c; Dtype* pstd_c; unsigned int* pncount_c;
@@ -111,14 +113,14 @@ void CCMomentCalc(const int n, const Dtype* wb, const Dtype* mask, Dtype* mu, Dt
   cudaMemcpy(pstd_c, pstd_g, sizeof(Dtype) * num_p, cudaMemcpyDeviceToHost);
   cudaMemcpy(pncount_c, pncount_g, sizeof(unsigned int) * num_p, cudaMemcpyDeviceToHost);      
   for (int i = 0; i < num_p; i++) {
-    *mu += pmu_c[i];*std += pstd_c[i];*ncount += pncount_c[i];
+    *mu_ += pmu_c[i];*std_ += pstd_c[i];*ncount += pncount_c[i];
   }       
   cudaFree(pmu_g);cudaFree(pstd_g);cudaFree(pncount_g);
   free(pmu_c);free(pstd_c);free(pncount_c);
 }
 
 template <typename Dtype>
-void CCNZeroCalc(const int n, const Dtype* mask, unsigned int* ncount ){  
+void CCNZeroCalc(const int n, const Dtype* mask, unsigned int* ncount ){   
   const unsigned int NUM_THREADS = 512;
   unsigned int* pncount_g;
   unsigned int* pncount_c;
@@ -136,62 +138,61 @@ void CCNZeroCalc(const int n, const Dtype* mask, unsigned int* ncount ){
 }
 
 template <typename Dtype>
-void CConvolutionLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
-      const vector<Blob<Dtype>*>& top) {  
+void DNSInnerProductLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
+    const vector<Blob<Dtype>*>& top) {    
 
   const Dtype* weight = this->blobs_[0]->gpu_data();  
   Dtype* weightMask = this->blobs_[2]->mutable_gpu_data();
-  Dtype* weightTmp = this->weight_tmp_.mutable_gpu_data(); 
+  Dtype* weightTmp = this->weight_tmp_.mutable_gpu_data();  
   
   const Dtype* bias = NULL;
   Dtype* biasMask = NULL;
-  Dtype* biasTmp = NULL;   
+  Dtype* biasTmp = NULL;
   if (this->bias_term_) {  
-    bias = this->blobs_[1]->mutable_gpu_data();   
+    bias = this->blobs_[1]->gpu_data();   
     biasMask = this->blobs_[3]->mutable_gpu_data();
     biasTmp = this->bias_tmp_.mutable_gpu_data();
-  }
-  
+  }   
+    
   if (this->phase_ == TRAIN){
     // Calculate the mean and standard deviation of learnable parameters    
-    if (this->std==0 && this->iter_ == 0){
+    if (this->std_==0 && this->iter_ == 0){
       unsigned int nz_w = 0, nz_b = 0, ncount = 0;
-      CCMomentCalc(this->blobs_[0]->count(), weight, weightMask, &mu, &std, &nz_w);
+      CCMomentCalc(this->blobs_[0]->count(), weight, weightMask, &mu_, &std_, &nz_w);
       if (this->bias_term_) {  
-        CCMomentCalc(this->blobs_[1]->count(), bias, biasMask, &mu, &std, &nz_b); 
-      } 
+        CCMomentCalc(this->blobs_[1]->count(), bias, biasMask, &mu_, &std_, &nz_b); 
+      }     
       ncount = nz_w + nz_b;
-      this->mu /= ncount; this->std -= ncount*mu*mu; 
-      this->std /= ncount; this->std = sqrt(std); 
-      LOG(INFO)<< "mu:" <<mu<<" "<<"std:"<<std<<" "
-               << nz_w <<"/" <<this->blobs_[0]->count() <<"(" << nz_w/this->blobs_[0]->count() << ")" << " "
-               << nz_b <<"/" <<this->blobs_[1]->count() <<"(" << nz_b/this->blobs_[1]->count() <<")" << " "
-               // << ncount<<"/" << this->blobs_[0]->count()+this->blobs_[1]->count()
-               // << ncount/(this->blobs_[0]->count()+this->blobs_[1]->count())
-               << "\n";
- 
-      // LOG(INFO)<<mu<<"  "<<std<<"  "<<ncount<<"\n";                    
+      this->mu_ /= ncount; 
+      this->std_ -= ncount*mu_*mu_; 
+      this->std_ /= ncount; 
+      this->std_ = sqrt(std_);  
+      // output the percentage of kept parameters.
+      LOG(INFO) << "mu_:" <<mu_<<" "<<"std_:"<<std_<<" "
+                << nz_w <<"/" <<this->blobs_[0]->count() 
+                << "(" << Dtype(nz_w)/this->blobs_[0]->count() << ")" << " "
+                << nz_b <<"/" <<this->blobs_[1]->count() 
+                << "(" << Dtype(nz_b)/this->blobs_[1]->count() << ")" << " "
+                << ncount<<"/" << this->blobs_[0]->count()+this->blobs_[1]->count()
+                << "(" << Dtype(ncount)/(this->blobs_[0]->count()+this->blobs_[1]->count()) << ")"
+                << "\n";
     }
-    
     // Calculate the weight mask and bias mask with probability
     // LOG(INFO) << rand()<<"  "<<rand()<<"  "<<rand()<<"  "<<rand()<<"  "<<rand()<< "\n";
-
-    Dtype r = static_cast<Dtype>(rand())/static_cast<Dtype>(RAND_MAX);
-    //LOG(INFO) << "r = " << r << "\n";
-    if (pow(1+(this->gamma)*(this->iter_),-(this->power))>r && (this->iter_)<(this->iter_stop_)) { 
+    Dtype r_ = static_cast<Dtype>(rand())/static_cast<Dtype>(RAND_MAX);
+    // LOG(INFO) << "r_ = " << r_ << "\n";
+    if (pow(1+(this->gamma)*(this->iter_),-(this->power))>r_ && (this->iter_)<(this->iter_stop_)) { 
       CCMaskCalc<Dtype><<<CAFFE_GET_BLOCKS(this->blobs_[0]->count()),
-        CAFFE_CUDA_NUM_THREADS>>>( this->blobs_[0]->count(), weight, 
-        weightMask, this->mu, this->std, this->crate);
+        CAFFE_CUDA_NUM_THREADS>>>( this->blobs_[0]->count(), weight, weightMask, this->mu_, this->std_, this->crate);
       CUDA_POST_KERNEL_CHECK;    
-      if (this->bias_term_) {   
+      if (this->bias_term_) {  
         CCMaskCalc<Dtype><<<CAFFE_GET_BLOCKS(this->blobs_[1]->count()),
-          CAFFE_CUDA_NUM_THREADS>>>( this->blobs_[1]->count(), bias, 
-          biasMask, this->mu, this->std, this->crate);
-        CUDA_POST_KERNEL_CHECK; 
-      }
-    }    
-  }   
- 
+          CAFFE_CUDA_NUM_THREADS>>>( this->blobs_[1]->count(), bias, biasMask, this->mu_, this->std_, this->crate);
+        CUDA_POST_KERNEL_CHECK;  
+      }    
+    }
+  }  
+  
   // Calculate the current (masked) weight and bias
   CCMaskApply<Dtype><<<CAFFE_GET_BLOCKS(this->blobs_[0]->count()),
     CAFFE_CUDA_NUM_THREADS>>>( this->blobs_[0]->count(), weight, weightMask, weightTmp);
@@ -200,67 +201,85 @@ void CConvolutionLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
     CCMaskApply<Dtype><<<CAFFE_GET_BLOCKS(this->blobs_[1]->count()),
       CAFFE_CUDA_NUM_THREADS>>>( this->blobs_[1]->count(), bias, biasMask, biasTmp);
     CUDA_POST_KERNEL_CHECK;  
-  }
-      
+  } 
+   
   // Forward calculation with (masked) weight and bias 
-  for (int i = 0; i < bottom.size(); ++i) {
-    const Dtype* bottom_data = bottom[i]->gpu_data();
-    Dtype* top_data = top[i]->mutable_gpu_data();
-    for (int n = 0; n < this->num_; ++n) {
-      this->forward_gpu_gemm(bottom_data + n * this->bottom_dim_, weightTmp,
-          top_data + n * this->top_dim_);
-      if (this->bias_term_) {
-        this->forward_gpu_bias(top_data + n * this->top_dim_, biasTmp);
-      }
-    }
+  const Dtype* bottom_data = bottom[0]->gpu_data();
+  Dtype* top_data = top[0]->mutable_gpu_data();
+  if (M_ == 1) {
+    caffe_gpu_gemv<Dtype>(CblasNoTrans, N_, K_, (Dtype)1.,
+                         weightTmp, bottom_data, (Dtype)0., top_data);
+    if (bias_term_)
+      caffe_gpu_axpy<Dtype>(N_, bias_multiplier_.cpu_data()[0],
+                            biasTmp, top_data);
+  } else {
+    caffe_gpu_gemm<Dtype>(CblasNoTrans, 
+                          transpose_ ? CblasNoTrans : CblasTrans, 
+                          M_, N_, K_, (Dtype)1.,
+                          bottom_data, weightTmp, (Dtype)0., top_data);
+    if (bias_term_)
+      caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, M_, N_, 1, (Dtype)1.,
+                            bias_multiplier_.gpu_data(),
+                            biasTmp, (Dtype)1., top_data);
   }
 }
 
 template <typename Dtype>
-void CConvolutionLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
-      const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) {
-  const Dtype* weightTmp = this->weight_tmp_.gpu_data();    
-  const Dtype* weightMask = this->blobs_[2]->gpu_data();
-  Dtype* weight_diff = this->blobs_[0]->mutable_gpu_diff();   
-  for (int i = 0; i < top.size(); ++i) {    
-    const Dtype* top_diff = top[i]->gpu_diff();
-    // Bias gradient, if necessary.
-    if (this->bias_term_ && this->param_propagate_down_[1]) {
-      const Dtype* biasMask = this->blobs_[3]->gpu_data();
-      Dtype* bias_diff = this->blobs_[1]->mutable_gpu_diff();
-       
-      CCMaskApply<Dtype><<<CAFFE_GET_BLOCKS(this->blobs_[3]->count()),
-        CAFFE_CUDA_NUM_THREADS>>>( this->blobs_[3]->count(), bias_diff, biasMask, bias_diff);
-      CUDA_POST_KERNEL_CHECK;  
-      
-      for (int n = 0; n < this->num_; ++n) {
-        this->backward_gpu_bias(bias_diff, top_diff + n * this->top_dim_);
-      }
+void DNSInnerProductLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
+    const vector<bool>& propagate_down,
+    const vector<Blob<Dtype>*>& bottom) {
+  const Dtype* top_diff = top[0]->gpu_diff();
+  if (this->param_propagate_down_[0]) {
+    const Dtype* weightMask = this->blobs_[2]->gpu_data();
+    Dtype* weight_diff = this->blobs_[0]->mutable_gpu_diff();
+    const Dtype* bottom_data = bottom[0]->gpu_data();
+    // Gradient with respect to weight
+    
+    CCMaskApply<Dtype><<<CAFFE_GET_BLOCKS(this->blobs_[2]->count()),
+      CAFFE_CUDA_NUM_THREADS>>>( this->blobs_[2]->count(), weight_diff, weightMask, weight_diff);
+    CUDA_POST_KERNEL_CHECK; 
+    
+    if (transpose_) {
+      caffe_gpu_gemm<Dtype>(CblasTrans, CblasNoTrans,
+          K_, N_, M_,
+          (Dtype)1., bottom_data, top_diff,
+          (Dtype)1., this->blobs_[0]->mutable_gpu_diff());
+    } else {
+      caffe_gpu_gemm<Dtype>(CblasTrans, CblasNoTrans,
+          N_, K_, M_,
+          (Dtype)1., top_diff, bottom_data,
+          (Dtype)1., this->blobs_[0]->mutable_gpu_diff());
     }
-    if (this->param_propagate_down_[0] || propagate_down[i]) {
-      const Dtype* bottom_data = bottom[i]->gpu_data();
-      Dtype* bottom_diff = bottom[i]->mutable_gpu_diff();
-      
-      CCMaskApply<Dtype><<<CAFFE_GET_BLOCKS(this->blobs_[2]->count()),
-        CAFFE_CUDA_NUM_THREADS>>>( this->blobs_[2]->count(), weight_diff, weightMask, weight_diff);
-      CUDA_POST_KERNEL_CHECK; 
-      
-      for (int n = 0; n < this->num_; ++n) {
-        // gradient w.r.t. weight. Note that we will accumulate diffs.
-        if (this->param_propagate_down_[0]) {
-          this->weight_gpu_gemm(bottom_data + n * this->bottom_dim_,
-              top_diff + n * this->top_dim_, weight_diff);
-        }
-        // gradient w.r.t. bottom data, if necessary.
-        if (propagate_down[i]) {
-          this->backward_gpu_gemm(top_diff + n * this->top_dim_, weightTmp,
-              bottom_diff + n * this->bottom_dim_);
-        }
-      }
+  }
+  if (bias_term_ && this->param_propagate_down_[1]) {
+    const Dtype* biasMask = this->blobs_[3]->gpu_data();
+    Dtype* bias_diff = this->blobs_[1]->mutable_gpu_diff();
+    // Gradient with respect to bias
+    CCMaskApply<Dtype><<<CAFFE_GET_BLOCKS(this->blobs_[3]->count()),
+      CAFFE_CUDA_NUM_THREADS>>>( this->blobs_[3]->count(), bias_diff, biasMask, bias_diff);
+    CUDA_POST_KERNEL_CHECK;     
+    
+    caffe_gpu_gemv<Dtype>(CblasTrans, M_, N_, (Dtype)1., top_diff,
+        bias_multiplier_.gpu_data(), (Dtype)1.,bias_diff);
+  } 
+  if (propagate_down[0]) {
+    const Dtype* weightTmp = this->weight_tmp_.gpu_data();        
+    // Gradient with respect to bottom data
+    if (transpose_) {
+      caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasTrans,
+          M_, K_, N_,
+          (Dtype)1., top_diff, this->blobs_[0]->gpu_data(),
+          (Dtype)0., bottom[0]->mutable_gpu_diff());
+    } else {
+      caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans,
+          M_, K_, N_,
+         (Dtype)1., top_diff, this->blobs_[0]->gpu_data(),
+         (Dtype)0., bottom[0]->mutable_gpu_diff());
     }
   }
 }
 
-INSTANTIATE_LAYER_GPU_FUNCS(CConvolutionLayer);
+INSTANTIATE_LAYER_GPU_FUNCS(DNSInnerProductLayer);
 
 }  // namespace caffe
+

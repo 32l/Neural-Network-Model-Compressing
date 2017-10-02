@@ -1,5 +1,5 @@
-#ifndef CAFFE_CINNER_PRODUCT_LAYER_HPP_
-#define CAFFE_CINNER_PRODUCT_LAYER_HPP_
+#ifndef CAFFE_DNSINNER_PRODUCT_LAYER_HPP_
+#define CAFFE_DNSINNER_PRODUCT_LAYER_HPP_
 
 #include <vector>
 
@@ -9,22 +9,22 @@
 
 namespace caffe{
 /**
- * @brief The compressed InnerProduct layer, also known as a compressed 
+ * @brief The DNS InnerProduct layer, also known as a DNS 
  *  "fully-connected" layer
  *
  * TODO(dox): thorough documentation for Forward, Backward, and proto params.
  */
 template <typename Dtype>
-class CInnerProductLayer : public Layer<Dtype> {
+class DNSInnerProductLayer : public Layer<Dtype> {
  public:
-  explicit CInnerProductLayer(const LayerParameter& param)
+  explicit DNSInnerProductLayer(const LayerParameter& param)
       : Layer<Dtype>(param) {}
   virtual void LayerSetUp(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top);
   virtual void Reshape(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top);
 
-  virtual inline const char* type() const { return "CInnerProduct"; }
+  virtual inline const char* type() const { return "DNSInnerProduct"; }
   virtual inline int ExactNumBottomBlobs() const { return 1; }
   virtual inline int ExactNumTopBlobs() const { return 1; }
 
@@ -47,15 +47,15 @@ class CInnerProductLayer : public Layer<Dtype> {
 
  private:
   Blob<Dtype> weight_tmp_;
-  Blob<Dtype> bias_tmp_;   
-  Blob<Dtype> rand_weight_m_;
-  Blob<Dtype> rand_bias_m_;    
-  Dtype gamma,power; 
-  Dtype crate;  
-  Dtype mu,std;  
+  Blob<Dtype> bias_tmp_;     
+  Dtype mu_;
+  Dtype std_;
+  Dtype gamma_;
+  Dtype power_; 
+  Dtype c_rate_;  
   int iter_stop_;
 };
 
 }   // namespace caffe
 
-#endif  // CAFFE_CINNER_PRODUCT_LAYER_HPP_
+#endif  // CAFFE_DNSINNER_PRODUCT_LAYER_HPP_

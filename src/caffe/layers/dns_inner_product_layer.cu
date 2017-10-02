@@ -181,13 +181,13 @@ void DNSInnerProductLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom
     // LOG(INFO) << rand()<<"  "<<rand()<<"  "<<rand()<<"  "<<rand()<<"  "<<rand()<< "\n";
     Dtype r_ = static_cast<Dtype>(rand())/static_cast<Dtype>(RAND_MAX);
     // LOG(INFO) << "r_ = " << r_ << "\n";
-    if (pow(1+(this->gamma)*(this->iter_),-(this->power))>r_ && (this->iter_)<(this->iter_stop_)) { 
+    if (pow(1+(this->gamma_)*(this->iter_),-(this->power_))>r_ && (this->iter_)<(this->iter_stop_)) { 
       CCMaskCalc<Dtype><<<CAFFE_GET_BLOCKS(this->blobs_[0]->count()),
-        CAFFE_CUDA_NUM_THREADS>>>( this->blobs_[0]->count(), weight, weightMask, this->mu_, this->std_, this->crate);
+        CAFFE_CUDA_NUM_THREADS>>>( this->blobs_[0]->count(), weight, weightMask, this->mu_, this->std_, this->c_rate_);
       CUDA_POST_KERNEL_CHECK;    
       if (this->bias_term_) {  
         CCMaskCalc<Dtype><<<CAFFE_GET_BLOCKS(this->blobs_[1]->count()),
-          CAFFE_CUDA_NUM_THREADS>>>( this->blobs_[1]->count(), bias, biasMask, this->mu_, this->std_, this->crate);
+          CAFFE_CUDA_NUM_THREADS>>>( this->blobs_[1]->count(), bias, biasMask, this->mu_, this->std_, this->c_rate_);
         CUDA_POST_KERNEL_CHECK;  
       }    
     }

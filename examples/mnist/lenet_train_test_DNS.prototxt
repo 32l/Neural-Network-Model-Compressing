@@ -35,7 +35,7 @@ layer {
 }
 layer {
   name: "conv1"
-  type: "CConvolution"
+  type: "DNSConvolution"
   bottom: "data"
   top: "conv1"
   param {
@@ -55,7 +55,7 @@ layer {
       type: "constant"
     }
   }
-  cconvolution_param {
+  dns_convolution_param {
     gamma: 0.0001
     power: 1
     c_rate: 1
@@ -83,7 +83,7 @@ layer {
 }
 layer {
   name: "conv2"
-  type: "CConvolution"
+  type: "DNSConvolution"
   bottom: "pool1"
   top: "conv2"
   param {
@@ -103,7 +103,7 @@ layer {
       type: "constant"
     }
   }
-  cconvolution_param {
+  dns_convolution_param {
     gamma: 0.0001
     power: 1
     c_rate: 2
@@ -131,7 +131,7 @@ layer {
 }
 layer {
   name: "ip1"
-  type: "CInnerProduct"
+  type: "DNSInnerProduct"
   bottom: "pool2"
   top: "ip1"
   param {
@@ -149,7 +149,7 @@ layer {
       type: "constant"
     }
   }
-  cinner_product_param {
+  dns_inner_product_param {
     gamma: 0.0001
     power: 1
     c_rate: 2
@@ -172,7 +172,7 @@ layer {
 }
 layer {
   name: "ip2"
-  type: "CInnerProduct"
+  type: "DNSInnerProduct"
   bottom: "ip1"
   top: "ip2"
   param {
@@ -190,7 +190,7 @@ layer {
       type: "constant"
     }
   }
-  cinner_product_param {
+  dns_inner_product_param {
     gamma: 0.0001
     power: 1
     c_rate: 1

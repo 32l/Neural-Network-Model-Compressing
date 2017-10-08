@@ -10,12 +10,12 @@ void DNSConvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {
   BaseConvolutionLayer <Dtype>::LayerSetUp(bottom, top); 
   
-  /************ For dynamic network surgery ***************/
+  /********** for neural network model compression **********/
   DNSConvolutionParameter dsn_conv_param = this->layer_param_.dns_convolution_param();
   
   if(this->blobs_.size()==2 && (this->bias_term_)){
     this->blobs_.resize(4);
-    // Intialize and fill the weightmask & biasmask
+    // Intialize and fill the weight mask & bias mask
     this->blobs_[2].reset(new Blob<Dtype>(this->blobs_[0]->shape()));
     shared_ptr<Filler<Dtype> > weight_mask_filler(GetFiller<Dtype>(
         dsn_conv_param.weight_mask_filler()));
@@ -27,7 +27,7 @@ void DNSConvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
   }  
   else if(this->blobs_.size()==1 && (!this->bias_term_)){
     this->blobs_.resize(2);   
-    // Intialize and fill the weightmask
+    // Intialize and fill the weight mask
     this->blobs_[1].reset(new Blob<Dtype>(this->blobs_[0]->shape()));
     shared_ptr<Filler<Dtype> > bias_mask_filler(GetFiller<Dtype>(
         dsn_conv_param.bias_mask_filler()));
@@ -45,7 +45,7 @@ void DNSConvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
   this->power_ = dsn_conv_param.power();
   this->c_rate_ = dsn_conv_param.c_rate();  
   this->iter_stop_ = dsn_conv_param.iter_stop();
-  /********************************************************/
+  /**********************************************************/
 }
 
 template <typename Dtype>
@@ -133,7 +133,7 @@ void DNSConvolutionLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
     }
   } 
 
-  // Calculate the current (masked) weight and bias
+  // Calculate the actual forwarded (masked) weight and bias
   for (unsigned int k = 0;k < this->blobs_[0]->count(); ++k) {
     weightTmp[k] = weight[k]*weightMask[k];
   }
@@ -143,7 +143,7 @@ void DNSConvolutionLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
     }
   }
   
-  // Forward calculation with (masked) weight and bias 
+  // Forward calculation with masked weight and bias 
   for (int i = 0; i < bottom.size(); ++i) {
     const Dtype* bottom_data = bottom[i]->cpu_data();
     Dtype* top_data = top[i]->mutable_cpu_data();

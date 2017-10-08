@@ -53,13 +53,13 @@ void DNSInnerProductLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
   }  // parameter initialization
   this->param_propagate_down_.resize(this->blobs_.size(), true);
   
-  /************ For dynamic network surgery ***************/
+  /********** for neural network model compression **********/
   DNSInnerProductParameter dns_inner_param = 
     this->layer_param_.dns_inner_product_param();
   
   if(this->blobs_.size()==2 && (this->bias_term_)){
     this->blobs_.resize(4);
-    // Intialize and fill the weightmask & biasmask
+    // Intialize and fill the weight mask & bias mask
     this->blobs_[2].reset(new Blob<Dtype>(this->blobs_[0]->shape()));
     shared_ptr<Filler<Dtype> > weight_mask_filler(GetFiller<Dtype>(
         dns_inner_param.weight_mask_filler()));
@@ -89,7 +89,7 @@ void DNSInnerProductLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
   this->power_ = dns_inner_param.power();
   this->c_rate_ = dns_inner_param.c_rate();  
   this->iter_stop_ = dns_inner_param.iter_stop();    
-  /********************************************************/
+  /**********************************************************/
 }
 
 template <typename Dtype>
@@ -121,7 +121,7 @@ void DNSInnerProductLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
 template <typename Dtype>
 void DNSInnerProductLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
     const vector<Blob<Dtype>*>& top) {
-  
+
   const Dtype* weight = this->blobs_[0]->cpu_data();    
   Dtype* weightMask = this->blobs_[2]->mutable_cpu_data(); 
   Dtype* weightTmp = this->weight_tmp_.mutable_cpu_data(); 
@@ -184,9 +184,9 @@ void DNSInnerProductLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom
         }    
       } 
     }
-  }    
+  }
   
-  // Calculate the acctually forwarded (masked) weight and bias
+  // Calculate the acctual forwarded (masked) weight and bias
   for (unsigned int k = 0;k < this->blobs_[0]->count(); ++k) {
     weightTmp[k] = weight[k]*weightMask[k];
   }
@@ -195,7 +195,7 @@ void DNSInnerProductLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom
       biasTmp[k] = bias[k]*biasMask[k];
     }
   } 
-  // Forward calculation with (masked) weight and bias 
+  // Forward calculation with masked weight and bias 
   const Dtype* bottom_data = bottom[0]->cpu_data();
   Dtype* top_data = top[0]->mutable_cpu_data();
   caffe_cpu_gemm<Dtype>(CblasNoTrans, transpose_ ? CblasNoTrans : CblasTrans, 

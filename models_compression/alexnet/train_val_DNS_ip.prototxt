@@ -39,7 +39,7 @@ layer {
 }
 layer {
   name: "conv1"
-  type: "CConvolution"
+  type: "DNSConvolution"
   bottom: "data"
   top: "conv1"
   param {
@@ -63,18 +63,18 @@ layer {
       value: 0
     }
   }
-  cconvolution_param {
-    gamma: 0.0001
+  dns_convolution_param {
+    gamma: 0.0000025
     power: 1
-    c_rate: 2
-    iter_stop: 450000  
+    c_rate: -0.9
+    iter_stop: -1 
     weight_mask_filler {
       type: "constant"
-      value: 0
+      value: 1
     }
     bias_mask_filler {
       type: "constant"
-      value: 0
+      value: 1
     }
   }
 }
@@ -108,7 +108,7 @@ layer {
 }
 layer {
   name: "conv2"
-  type: "CConvolution"
+  type: "DNSConvolution"
   bottom: "pool1"
   top: "conv2"
   param {
@@ -133,11 +133,11 @@ layer {
       value: 0.1
     }
   }
-  cconvolution_param {
-    gamma: 0.0001
+  dns_convolution_param {
+    gamma: 0.0000025
     power: 1
-    c_rate: 2
-    iter_stop: 450000  
+    c_rate: 0
+    iter_stop: -1  
     weight_mask_filler {
       type: "constant"
       value: 1
@@ -178,7 +178,7 @@ layer {
 }
 layer {
   name: "conv3"
-  type: "CConvolution"
+  type: "DNSConvolution"
   bottom: "pool2"
   top: "conv3"
   param {
@@ -202,11 +202,11 @@ layer {
       value: 0
     }
   }
-  cconvolution_param {
-    gamma: 0.0001
+  dns_convolution_param {
+    gamma: 0.0000025
     power: 1
-    c_rate: 2
-    iter_stop: 450000  
+    c_rate: 0.5
+    iter_stop: -1 
     weight_mask_filler {
       type: "constant"
       value: 1
@@ -225,7 +225,7 @@ layer {
 }
 layer {
   name: "conv4"
-  type: "CConvolution"
+  type: "DNSConvolution"
   bottom: "conv3"
   top: "conv4"
   param {
@@ -250,11 +250,11 @@ layer {
       value: 0.1
     }
   }
-  cconvolution_param {
-    gamma: 0.0001
+  dns_convolution_param {
+    gamma: 0.0000025
     power: 1
-    c_rate: 2
-    iter_stop: 450000  
+    c_rate: 0.5
+    iter_stop: -1 
     weight_mask_filler {
       type: "constant"
       value: 1
@@ -273,7 +273,7 @@ layer {
 }
 layer {
   name: "conv5"
-  type: "CConvolution"
+  type: "DNSConvolution"
   bottom: "conv4"
   top: "conv5"
   param {
@@ -298,11 +298,11 @@ layer {
       value: 0.1
     }
   }
-  cconvolution_param {
-    gamma: 0.0001
+  dns_convolution_param {
+    gamma: 0.0000025
     power: 1
-    c_rate: 2
-    iter_stop: 450000  
+    c_rate: 0.5
+    iter_stop: -1 
     weight_mask_filler {
       type: "constant"
       value: 1
@@ -332,7 +332,7 @@ layer {
 }
 layer {
   name: "fc6"
-  type: "CInnerProduct"
+  type: "DNSInnerProduct"
   bottom: "pool5"
   top: "fc6"
   param {
@@ -354,11 +354,11 @@ layer {
       value: 0.1
     }
   }
-  cinner_product_param {
-    gamma: 0.0001
+  dns_inner_product_param {
+    gamma: 0.0000025
     power: 1
-    c_rate: 2
-    iter_stop: 450000  
+    c_rate: 0.8 
+    iter_stop: 1000000  
     weight_mask_filler {
       type: "constant"
       value: 1
@@ -386,7 +386,7 @@ layer {
 }
 layer {
   name: "fc7"
-  type: "CInnerProduct"
+  type: "DNSInnerProduct"
   bottom: "fc6"
   top: "fc7"
   param {
@@ -408,11 +408,11 @@ layer {
       value: 0.1
     }
   }
-  cinner_product_param {
-    gamma: 0.0001
+  dns_inner_product_param {
+    gamma: 0.0000025
     power: 1
-    c_rate: 2
-    iter_stop: 450000  
+    c_rate: 0.6
+    iter_stop: 1000000  
     weight_mask_filler {
       type: "constant"
       value: 1
@@ -440,7 +440,7 @@ layer {
 }
 layer {
   name: "fc8"
-  type: "CInnerProduct"
+  type: "DNSInnerProduct"
   bottom: "fc7"
   top: "fc8"
   param {
@@ -462,11 +462,11 @@ layer {
       value: 0
     }
   }
-  cinner_product_param {
-    gamma: 0.0001
+  dns_inner_product_param {
+    gamma: 0.0000025
     power: 1
-    c_rate: 2
-    iter_stop: 450000  
+    c_rate: 0.8
+    iter_stop: 1000000  
     weight_mask_filler {
       type: "constant"
       value: 1

@@ -1,18 +1,20 @@
-net: "modelscomtest/alexnet/train_val_DNS_conv.prototxt"
+net: "models_compression/alexnet/train_val_DNS_all.prototxt"
 test_iter: 250
-test_interval: 500
+test_interval: 1000
 base_lr: 0.001
 lr_policy: "multistep"
 gamma: 0.1
-stepvalue: 3000
+# stepvalue: 1000
 stepvalue: 10000
 stepvalue: 30000
+stepvalue: 60000
+# stepvalue: 3000
 
 display: 20
 max_iter: 80000
 momentum: 0.9
 weight_decay: 0.0005
 snapshot: 1000
-snapshot_prefix: "modelscomtest/alexnet/DNS_alex_conv"
+snapshot_prefix: "models_compression/alexnet/DNS_alex_all"
 solver_mode: GPU
 

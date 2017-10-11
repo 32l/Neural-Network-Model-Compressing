@@ -8,7 +8,8 @@
 
 namespace caffe {
 
-template <typename Dtype> class INQInnerProductLayer : public Layer<Dtype> {
+template <typename Dtype> 
+class INQInnerProductLayer : public Layer<Dtype> {
 public:
   explicit INQInnerProductLayer(const LayerParameter &param)
       : Layer<Dtype>(param) {}

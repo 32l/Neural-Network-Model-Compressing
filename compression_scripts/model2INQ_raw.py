@@ -1,5 +1,5 @@
 '''
-Convert dns pruned model to normal model directly.
+Convert <normal model / dns pruned model> to INQ raw model.
 '''
 
 import os, sys
@@ -17,23 +17,23 @@ import caffe
 
 help = '''
 Usage:
-    dns_to_normal.py <dns_model.prototxt> <dns_model.caffemodel> <target.prototxt> <target.caffemodel>
+    model2INQ_raw.py <source_prototxt.prototxt> <source_model.caffemodel> <INQ_net.prototxt> <INQ_model.caffemodel>
 '''
 
 if len(sys.argv) != 5:
     print help
     sys.exit(-1)
 else:
-    prototxt = sys.argv[1]  #
-    dns_model = sys.argv[2]   #
+    source_prototxt = sys.argv[1]  #
+    source_model = sys.argv[2]   #
     target_prototxt = sys.argv[3]
-    target = sys.argv[4]    #
+    target_model = sys.argv[4]    #
 
-if not os.path.exists(prototxt):
-    print "Error: %s does not exist!"%(prototxt)
+if not os.path.exists(source_prototxt):
+    print "Error: %s does not exist!"%(source_prototxt)
     sys.exit()
-elif not os.path.exists(dns_model):
-    print "Error: %s does not exist!"%(dns_model)
+elif not os.path.exists(source_model):
+    print "Error: %s does not exist!"%(source_model)
     sys.exit()
 elif not os.path.exists(target_prototxt):
     print "Error: %s does not exist!"%(target_prototxt)
@@ -41,7 +41,7 @@ elif not os.path.exists(target_prototxt):
 
 caffe.set_mode_cpu()
 
-net = caffe.Net(prototxt, caffe.TEST, weights=dns_model)
+net = caffe.Net(source_prototxt, caffe.TEST, weights=source_model)
 net_target = caffe.Net(target_prototxt, caffe.TEST)
 param_name_list = filter(lambda x: "conv" in x or "ip" in x or "fc" in x, net.params.keys())
 
@@ -74,6 +74,7 @@ params_kept = 0
 # print dir(net.params[param_name_list[0]])
 
 for param_name in param_name_list:
+    # source: DNS model, DNS mask transfered to INQ mask
     if len(net.params[param_name]) == 4:
         w_dns = net.params[param_name][0].data.astype(np.float32).flatten()
         b_dns = net.params[param_name][1].data.astype(np.float32).flatten()
@@ -83,17 +84,22 @@ for param_name in param_name_list:
         total_params, params_kept = display_layer_info(param_name, w_dns_mask, b_dns_mask, total_params, params_kept ) 
         dns_to_target(net_target.params[param_name][0].data, w_dns, w_dns_mask)
         dns_to_target(net_target.params[param_name][1].data, b_dns, b_dns_mask)
+        dns_to_target(net_target.params[param_name][2].data, w_dns, w_dns_mask)
+        dns_to_target(net_target.params[param_name][3].data, b_dns, b_dns_mask)
+    # source: normal model, INQ mask all ones
     elif len(net.params[param_name]) == 2:
         w_src = net.params[param_name][0].data.astype(np.float32).flatten()
         b_src = net.params[param_name][1].data.astype(np.float32).flatten()
         normal_to_target(net_target.params[param_name][0].data, w_src)
         normal_to_target(net_target.params[param_name][1].data, b_src)
-
+        normal_to_target(net_target.params[param_name][2].data, np.ones(net_target.params[param_name][2].shape()))
+        normal_to_target(net_target.params[param_name][3].data, np.ones(net_target.params[param_name][3].shape()))
+    # source: Error
     else:
-        print "Error: len of net.params[%s] is %d"%(param_name, len((net.params[param_name])) )
+        print "Error: len of net.params[%s] is %d"%(param_name, len((net.params[param_name])))
 
 
-net_target.save(target)
+net_target.save(target_model)
 
 # display the final statistics
 if total_params != 0 and params_kept != 0:
@@ -104,7 +110,7 @@ if total_params != 0 and params_kept != 0:
     print "Compression Rate: %f"%(total_params / params_kept)
     print " "
     print "*"*num_mark
-print "Model has been converted from DNS to normal, saved as %s"%(target)
+print "Model has been converted from DNS to normal, saved as %s"%(target_model)
 print " "
 
 

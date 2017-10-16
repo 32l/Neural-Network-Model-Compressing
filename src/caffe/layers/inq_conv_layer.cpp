@@ -235,7 +235,53 @@ void INQConvolutionLayer<Dtype>::ShapeIntoTwoPower(
   Dtype *param = input_blob->mutable_cpu_data();
   Dtype *mask = mask_blob->mutable_cpu_data();
   int count = input_blob->count();
-  int updated = 0;
+
+  int num_not_yet_quantized = 0;
+  vector<Dtype> sorted_param;
+  for (int i = 0; i < count; ++i) {
+    if (mask[i] == 1) {
+      ++num_not_yet_quantized;
+      sorted_param.push_back(param[i])
+    }
+  }
+  // just an estimation
+  int num_init_not_quantized = round(Dytpe( num_not_yet_quantized)/(1.0 - previous_portion ));
+  int num_not_tobe_quantized = num_init_not_quantized*(1.0-current_portion);
+  int num_tobe_update = num_not_yet_quantized - num_not_tobe_quantized;
+  
+  if(num_tobe_update > 0){
+    sort(sorted_param.begin(), sorted_param.end() );
+    Dtype threshold_ = sorted_param[num_not_tobe_quantized]
+    for (int i = 0; i < count; ++i) {
+      if (mask[i] == 1) {
+        if (param[i] >= threshold_) {
+          // exp_ won't be larger than max_quantum_exp_, already checked in the
+          // ComputeQuantumRange()
+          int exp_ = floor(log(4.0 * param[i] / 3.0) / log(2.0));
+          // CHECK_LE(exp_, max_quantum_exp_) ;
+          if (exp_ >= min_quantum_exp_) {
+            param[i] = pow(2.0, exp_);
+          }
+          else {
+            param[i] = 0;
+          }
+          mask[i] = 0;
+        }
+        else if (param[i] <= -threshold_) {
+          int exp_ = floor(log(4.0 * (-param[i]) / 3.0) / log(2.0));
+          if (exp_ >= min_quantum_exp_) {
+            param[i] = -pow(2.0, exp_);
+          }
+          else {
+            param[i] = 0;
+          }
+          mask[i] = 0;
+        }
+      }
+    }
+  }
+
+/*
   for (int i = 0; i < count; ++i) {
     if (mask[i] == 0) {
       updated++;
@@ -284,70 +330,8 @@ void INQConvolutionLayer<Dtype>::ShapeIntoTwoPower(
     }
   }
 }
-
-/*
-template <typename Dtype>
-void TwoPowerConvolutionLayer<Dtype>::ShapeIntoTwoPower(
-    Blob<Dtype> *input_blob,
-    Blob<Dtype> *mask_blob, 
-    const vector<float> &portions)
-{
-  const float previous_portion = portions[0];
-  const float current_portion = portions[1];
-  Dtype *param = input_blob->mutable_cpu_data();
-  Dtype *mask = mask_blob->mutable_cpu_data();
-
-  int count = input_blob->count();
-  int updated = 0;
-  // floor(count * previous_portion);
-
-  for (int i = 0; i < count; ++i)
-  {
-    if (mask[i] == 0)
-    {
-      updated++;
-    }
-  }
-
-  int left = count - updated;
-  int update = floor(count * current_portion) - updated;
-
-  vector<Dtype> sort_param(left);
-  // vector<Dtype> label(update);
-  int k = 0;
-  if (update > 0)
-  {
-    for (int i = 0; i < count; ++i)
-    {
-      if (mask[i] == 1)
-      {
-        sort_param[k++] = fabs(param[i]);
-      }
-    }
-    CHECK_EQ(k, left) << "Num of weights/bias that are not in 2 power
-     form does NOT match the portion!"; sort(sort_param.begin(),
-     sort_param.end() );
-    Dtype threshold = sort_param[left - update];
-    for (int i = 0; i < count; ++i)
-    {
-      if (mask[i] == 1)
-      {
-        if (param[i] >= threshold)
-        {
-          param[i] = pow(2.0, floor(log(4.0 * param[i] / 3.0) /
-                                    log(2.0)));
-          mask[i] = 0;
-        }
-        else if (param[i] <= -threshold)
-        {
-          param[i] = -pow(2.0, floor(log(4.0 * (-param[i]) / 3.0) / log(2.0)));
-          mask[i] = 0;
-        }
-      }
-    }
-  }
-}
 */
+
 
 #ifdef CPU_ONLY
 STUB_GPU(INQConvolutionLayer);

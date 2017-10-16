@@ -268,14 +268,15 @@ void TwoPowerInnerProductLayer<Dtype>::ShapeIntoTwoPower(
     }
   }
   // just an estimation
-  int num_init_not_quantized = round(Dytpe( num_not_yet_quantized)/(1.0 - previous_portion ));
-  int num_not_tobe_quantized = num_init_not_quantized*(1.0-current_portion);
+  int num_init_not_quantized =
+      round(Dytpe(num_not_yet_quantized) / (1.0 - previous_portion));
+  int num_not_tobe_quantized = num_init_not_quantized * (1.0 - current_portion);
   int num_tobe_update = num_not_yet_quantized - num_not_tobe_quantized;
-  
-  if(num_tobe_update > 0){
-    sort(sorted_param.begin(), sorted_param.end() );
-    Dtype threshold_ = sorted_param[num_not_tobe_quantized]
-    for (int i = 0; i < count; ++i) {
+
+  if (num_tobe_update > 0) {
+    sort(sorted_param.begin(), sorted_param.end());
+    Dtype threshold_ =
+        sorted_param[num_not_tobe_quantized] for (int i = 0; i < count; ++i) {
       if (mask[i] == 1) {
         if (param[i] >= threshold_) {
           // exp_ won't be larger than max_quantum_exp_, already checked in the
@@ -284,67 +285,11 @@ void TwoPowerInnerProductLayer<Dtype>::ShapeIntoTwoPower(
           // CHECK_LE(exp_, max_quantum_exp_) ;
           if (exp_ >= min_quantum_exp_) {
             param[i] = pow(2.0, exp_);
-          }
-          else {
-            param[i] = 0;
-          }
-          mask[i] = 0;
-        }
-        else if (param[i] <= -threshold_) {
-          int exp_ = floor(log(4.0 * (-param[i]) / 3.0) / log(2.0));
-          if (exp_ >= min_quantum_exp_) {
-            param[i] = -pow(2.0, exp_);
-          }
-          else {
-            param[i] = 0;
-          }
-          mask[i] = 0;
-        }
-      }
-    }
-  }
-
-
-
-
-/*
-  for (int i = 0; i < count; ++i) {
-    if (mask[i] == 0) {
-      updated++;
-    }
-  }
-  int left = count - updated;
-  // number of parameters that need to be updated
-  int update = floor(count * current_portion) - updated;
-  vector<Dtype> sort_param(left);
-  int k = 0;
-  // Start quantization
-  if (update > 0) {
-    // sort parameters according to absolute value
-    for (int i = 0; i < count; ++i) {
-      if (mask[i] == 1) {
-        sort_param[k++] = fabs(param[i]);
-      }
-    }
-    CHECK_EQ(k, left) << "Num of weights/bias that are not in 2 power form "
-                         "does NOT match the portion!";
-    sort(sort_param.begin(), sort_param.end());
-    // quantization threshold
-    Dtype threshold = sort_param[left - update];
-    // check and quantize each parameters
-    for (int i = 0; i < count; ++i) {
-      if (mask[i] == 1) {
-        if (param[i] >= threshold) {
-          // exp_ won't be larger than max_quantum_exp_, already checked in the
-          // ComputeQuantumRange()
-          int exp_ = floor(log(4.0 * param[i] / 3.0) / log(2.0));
-          if (exp_ >= min_quantum_exp_) {
-            param[i] = pow(2.0, exp_);
           } else {
             param[i] = 0;
           }
           mask[i] = 0;
-        } else if (param[i] <= -threshold) {
+        } else if (param[i] <= -threshold_) {
           int exp_ = floor(log(4.0 * (-param[i]) / 3.0) / log(2.0));
           if (exp_ >= min_quantum_exp_) {
             param[i] = -pow(2.0, exp_);
@@ -356,10 +301,60 @@ void TwoPowerInnerProductLayer<Dtype>::ShapeIntoTwoPower(
       }
     }
   }
-*/
 
+  /*
+    for (int i = 0; i < count; ++i) {
+      if (mask[i] == 0) {
+        updated++;
+      }
+    }
+    int left = count - updated;
+    // number of parameters that need to be updated
+    int update = floor(count * current_portion) - updated;
+    vector<Dtype> sort_param(left);
+    int k = 0;
+    // Start quantization
+    if (update > 0) {
+      // sort parameters according to absolute value
+      for (int i = 0; i < count; ++i) {
+        if (mask[i] == 1) {
+          sort_param[k++] = fabs(param[i]);
+        }
+      }
+      CHECK_EQ(k, left) << "Num of weights/bias that are not in 2 power form "
+                           "does NOT match the portion!";
+      sort(sort_param.begin(), sort_param.end());
+      // quantization threshold
+      Dtype threshold = sort_param[left - update];
+      // check and quantize each parameters
+      for (int i = 0; i < count; ++i) {
+        if (mask[i] == 1) {
+          if (param[i] >= threshold) {
+            // exp_ won't be larger than max_quantum_exp_, already checked in
+    the
+            // ComputeQuantumRange()
+            int exp_ = floor(log(4.0 * param[i] / 3.0) / log(2.0));
+            if (exp_ >= min_quantum_exp_) {
+              param[i] = pow(2.0, exp_);
+            } else {
+              param[i] = 0;
+            }
+            mask[i] = 0;
+          } else if (param[i] <= -threshold) {
+            int exp_ = floor(log(4.0 * (-param[i]) / 3.0) / log(2.0));
+            if (exp_ >= min_quantum_exp_) {
+              param[i] = -pow(2.0, exp_);
+            } else {
+              param[i] = 0;
+            }
+            mask[i] = 0;
+          }
+        }
+      }
+    }
+  */
 
-}   // ShapeIntoTwoPower()
+}  // ShapeIntoTwoPower()
 
 #ifdef CPU_ONLY
 STUB_GPU(TwoPowerInnerProductLayer);

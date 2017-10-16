@@ -4,11 +4,10 @@
 #include "caffe/layers/inq_conv_layer.hpp"
 #include <cmath>
 
-namespace caffe
-{
+namespace caffe {
 template <typename Dtype>
-void INQConvolutionLayer<Dtype>::LayerSetUp(
-    const vector<Blob<Dtype> *> &bottom, const vector<Blob<Dtype> *> &top) {
+void INQConvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype> *> &bottom,
+                                            const vector<Blob<Dtype> *> &top) {
   BaseConvolutionLayer<Dtype>::LayerSetUp(bottom, top);
   /********** for neural network model compression **********/
   INQConvolutionParameter inq_conv_param =
@@ -25,8 +24,7 @@ void INQConvolutionLayer<Dtype>::LayerSetUp(
     shared_ptr<Filler<Dtype>> bias_mask_filler(
         GetFiller<Dtype>(inq_conv_param.bias_mask_filler()));
     bias_mask_filler->Fill(this->blobs_[3].get());
-  }
-  else if (this->blobs_.size() == 1 && (!this->bias_term_)) {
+  } else if (this->blobs_.size() == 1 && (!this->bias_term_)) {
     this->blobs_.resize(2);
     // Intialize and fill the weight mask
     this->blobs_[1].reset(new Blob<Dtype>(this->blobs_[0]->shape()));
@@ -51,17 +49,17 @@ void INQConvolutionLayer<Dtype>::LayerSetUp(
 
 template <typename Dtype>
 void INQConvolutionLayer<Dtype>::compute_output_shape() {
-  const int* kernel_shape_data = this->kernel_shape_.cpu_data();
-  const int* stride_data = this->stride_.cpu_data();
-  const int* pad_data = this->pad_.cpu_data();
-  const int* dilation_data = this->dilation_.cpu_data();
+  const int *kernel_shape_data = this->kernel_shape_.cpu_data();
+  const int *stride_data = this->stride_.cpu_data();
+  const int *pad_data = this->pad_.cpu_data();
+  const int *dilation_data = this->dilation_.cpu_data();
   this->output_shape_.clear();
   for (int i = 0; i < this->num_spatial_axes_; ++i) {
     // i + 1 to skip channel axis
     const int input_dim = this->input_shape(i + 1);
     const int kernel_extent = dilation_data[i] * (kernel_shape_data[i] - 1) + 1;
-    const int output_dim = (input_dim + 2 * pad_data[i] - kernel_extent)
-        / stride_data[i] + 1;
+    const int output_dim =
+        (input_dim + 2 * pad_data[i] - kernel_extent) / stride_data[i] + 1;
     this->output_shape_.push_back(output_dim);
   }
 }
@@ -90,8 +88,7 @@ void INQConvolutionLayer<Dtype>::Forward_cpu(
         ShapeIntoTwoPower(this->blobs_[1].get(), this->blobs_[3].get(),
                           this->portions_, max_bias_quantum_exp_,
                           min_bias_quantum_exp_);
-      }
-      else if (this->blobs_.size() == 2 && (!this->bias_term_)) {
+      } else if (this->blobs_.size() == 2 && (!this->bias_term_)) {
         LOG(INFO) << "ERROR: No bias terms found... but continue...";
         ComputeQuantumRange(this->blobs_[0].get(), this->blobs_[1].get(),
                             this->portions_, weight_quantum_values_,
@@ -106,7 +103,7 @@ void INQConvolutionLayer<Dtype>::Forward_cpu(
   }
   /**********************************************************/
 
-  const Dtype *weight =  this->blobs_[0]->cpu_data();
+  const Dtype *weight = this->blobs_[0]->cpu_data();
   const Dtype *bias = NULL;
   if (this->bias_term_) {
     bias = this->blobs_[1]->cpu_data();
@@ -174,7 +171,7 @@ void INQConvolutionLayer<Dtype>::ComputeQuantumRange(
     const vector<float> portions, vector<Dtype> &quantum_values,
     const int &num_quantum_values, int &max_quantum_exp_,
     int &min_quantum_exp_) {
-      
+
   quantum_values.resize(2 * num_quantum_values + 1);
   const Dtype *values = blob->cpu_data();
   const Dtype *mask = blob_mask->cpu_data();
@@ -187,14 +184,12 @@ void INQConvolutionLayer<Dtype>::ComputeQuantumRange(
       if (fabs(values[k]) > max_value_tobe_quantized) {
         max_value_tobe_quantized = fabs(values[k]);
       }
-    }
-    else if (mask[k] == 0) {
+    } else if (mask[k] == 0) {
       if (fabs(values[k]) > max_value_quantized) {
         max_value_quantized = fabs(values[k]);
       }
       ++updated;
-    }
-    else {
+    } else {
       LOG(ERROR) << "Mask value is not 0, nor 1, in tp_inner_product_layer";
     }
   }
@@ -203,8 +198,7 @@ void INQConvolutionLayer<Dtype>::ComputeQuantumRange(
                          << " updated values while there should be none!";
     max_quantum_exp_ =
         floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
-  }
-  else {
+  } else {
     max_quantum_exp_ = round(log(max_value_quantized) / log(2.0));
     int max_tobe_quantized_exp_ =
         floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
@@ -245,13 +239,14 @@ void INQConvolutionLayer<Dtype>::ShapeIntoTwoPower(
     }
   }
   // just an estimation
-  int num_init_not_quantized = round(Dytpe( num_not_yet_quantized)/(1.0 - previous_portion ));
-  int num_not_tobe_quantized = num_init_not_quantized*(1.0-current_portion);
+  int num_init_not_quantized =
+      round(Dtype(num_not_yet_quantized) / (1.0 - previous_portion));
+  int num_not_tobe_quantized = num_init_not_quantized * (1.0 - current_portion);
   int num_tobe_update = num_not_yet_quantized - num_not_tobe_quantized;
-  
-  if(num_tobe_update > 0){
-    sort(sorted_param.begin(), sorted_param.end() );
-    Dtype threshold_ = sorted_param[num_not_tobe_quantized]
+
+  if (num_tobe_update > 0) {
+    sort(sorted_param.begin(), sorted_param.end());
+    Dtype threshold_ = sorted_param[num_not_tobe_quantized];
     for (int i = 0; i < count; ++i) {
       if (mask[i] == 1) {
         if (param[i] >= threshold_) {
@@ -261,18 +256,15 @@ void INQConvolutionLayer<Dtype>::ShapeIntoTwoPower(
           // CHECK_LE(exp_, max_quantum_exp_) ;
           if (exp_ >= min_quantum_exp_) {
             param[i] = pow(2.0, exp_);
-          }
-          else {
+          } else {
             param[i] = 0;
           }
           mask[i] = 0;
-        }
-        else if (param[i] <= -threshold_) {
+        } else if (param[i] <= -threshold_) {
           int exp_ = floor(log(4.0 * (-param[i]) / 3.0) / log(2.0));
           if (exp_ >= min_quantum_exp_) {
             param[i] = -pow(2.0, exp_);
-          }
-          else {
+          } else {
             param[i] = 0;
           }
           mask[i] = 0;
@@ -281,57 +273,58 @@ void INQConvolutionLayer<Dtype>::ShapeIntoTwoPower(
     }
   }
 
-/*
-  for (int i = 0; i < count; ++i) {
-    if (mask[i] == 0) {
-      updated++;
-    }
-  }
-  int left = count - updated;
-  int update = floor(count * current_portion) - updated;
-  vector<Dtype> sort_param(left);
-  int k = 0;
-  if (update > 0) {
+  /*
     for (int i = 0; i < count; ++i) {
-      if (mask[i] == 1) {
-        sort_param[k++] = fabs(param[i]);
+      if (mask[i] == 0) {
+        updated++;
       }
     }
-    CHECK_EQ(k, left) << "Num of weights/bias that are not in 2 power form "
-                         "does NOT match the portion!";
-    sort(sort_param.begin(), sort_param.end());
-    Dtype threshold = sort_param[left - update];
-    for (int i = 0; i < count; ++i) {
-      if (mask[i] == 1) {
-        if (param[i] >= threshold) {
-          // exp_ won't be larger than max_quantum_exp_, already checked in the
-          // ComputeQuantumRange()
-          int exp_ = floor(log(4.0 * param[i] / 3.0) / log(2.0));
-          // CHECK_LE(exp_, max_quantum_exp_) ;
-          if (exp_ >= min_quantum_exp_) {
-            param[i] = pow(2.0, exp_);
-          }
-          else {
-            param[i] = 0;
-          }
-          mask[i] = 0;
+    int left = count - updated;
+    int update = floor(count * current_portion) - updated;
+    vector<Dtype> sort_param(left);
+    int k = 0;
+    if (update > 0) {
+      for (int i = 0; i < count; ++i) {
+        if (mask[i] == 1) {
+          sort_param[k++] = fabs(param[i]);
         }
-        else if (param[i] <= -threshold) {
-          int exp_ = floor(log(4.0 * (-param[i]) / 3.0) / log(2.0));
-          if (exp_ >= min_quantum_exp_) {
-            param[i] = -pow(2.0, exp_);
+      }
+      CHECK_EQ(k, left) << "Num of weights/bias that are not in 2 power form "
+                           "does NOT match the portion!";
+      sort(sort_param.begin(), sort_param.end());
+      Dtype threshold = sort_param[left - update];
+      for (int i = 0; i < count; ++i) {
+        if (mask[i] == 1) {
+          if (param[i] >= threshold) {
+            // exp_ won't be larger than max_quantum_exp_, already checked in
+  the
+            // ComputeQuantumRange()
+            int exp_ = floor(log(4.0 * param[i] / 3.0) / log(2.0));
+            // CHECK_LE(exp_, max_quantum_exp_) ;
+            if (exp_ >= min_quantum_exp_) {
+              param[i] = pow(2.0, exp_);
+            }
+            else {
+              param[i] = 0;
+            }
+            mask[i] = 0;
           }
-          else {
-            param[i] = 0;
+          else if (param[i] <= -threshold) {
+            int exp_ = floor(log(4.0 * (-param[i]) / 3.0) / log(2.0));
+            if (exp_ >= min_quantum_exp_) {
+              param[i] = -pow(2.0, exp_);
+            }
+            else {
+              param[i] = 0;
+            }
+            mask[i] = 0;
           }
-          mask[i] = 0;
         }
       }
     }
   }
+  */
 }
-*/
-
 
 #ifdef CPU_ONLY
 STUB_GPU(INQConvolutionLayer);

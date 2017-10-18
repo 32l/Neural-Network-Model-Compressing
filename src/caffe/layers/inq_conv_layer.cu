@@ -8,7 +8,8 @@ namespace caffe {
 
 template <typename Dtype>
 __global__ void TPCalc(const int n, Dtype *param, Dtype *mask,
-                       const Dtype threshold_， const int max_quantum_exp_,
+                       const Dtype threshold_,
+                       const int max_quantum_exp_,
                        const int min_quantum_exp_) {
   CUDA_KERNEL_LOOP(i, n) {
     if (mask[i] == 1) {
@@ -218,18 +219,18 @@ void INQConvolutionLayer<Dtype>::ShapeIntoTwoPower(
   for (int i = 0; i < count; ++i) {
     if (mask[i] == 1) {
       ++num_not_yet_quantized;
-      sorted_param.push_back(param[i])
+      sorted_param.push_back(param[i]);
     }
   }
   // just an estimation
-  int num_init_not_quantized = round(Dytpe( num_not_yet_quantized)/(1.0 - previous_portion ));
+  int num_init_not_quantized = round(Dtype( num_not_yet_quantized)/(1.0 - previous_portion ));
   int num_not_tobe_quantized = num_init_not_quantized*(1.0-current_portion);
   int num_tobe_update = num_not_yet_quantized - num_not_tobe_quantized;
   
   if(num_tobe_update > 0){
     sort(sorted_param.begin(), sorted_param.end() );
-    Dtype threshold_ = sorted_param[num_not_tobe_quantized]
-    TPCalc<Dtype><<<CAFFE_GET_BLOCKS(count), CAFFE_CUDA_NUM_THREADS>>>(count, param, mask, threshold);
+    Dtype threshold_ = sorted_param[num_not_tobe_quantized];
+    TPCalc<Dtype><<<CAFFE_GET_BLOCKS(count), CAFFE_CUDA_NUM_THREADS>>>(count, param, mask, threshold_, max_quantum_exp_, min_quantum_exp_);
     CUDA_POST_KERNEL_CHECK;
 
     LOG(INFO) << "Shaping finished in INQ_conv... [gpu]";
@@ -269,3 +270,4 @@ void INQConvolutionLayer<Dtype>::ShapeIntoTwoPower(
 INSTANTIATE_LAYER_GPU_FUNCS(INQConvolutionLayer);
 
 } // namespace caffe
+

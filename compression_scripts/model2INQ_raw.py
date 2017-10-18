@@ -48,6 +48,7 @@ param_name_list = filter(lambda x: "conv" in x or "ip" in x or "fc" in x, net.pa
 # number of decorative marks
 num_mark = 55
 
+# convert masked w/b to normal w/b
 def dns_to_target(wb, wb_dns, wb_dns_mask):
     data = np.zeros(wb_dns.size)
     data[wb_dns_mask == 1] = wb_dns[wb_dns_mask == 1]
@@ -62,13 +63,14 @@ def display_layer_info(lname, w_mask, b_mask, total_params, params_kept):
     print "%s       b: %d/%d (%f %%) kept"%(' '*len(lname), b_kept, b_mask.size, 100.0*b_kept/ b_mask.size)
     print "%s   total: %d/%d (%f %%) kept"%(' '*len(lname), w_kept+b_kept, w_mask.size+b_mask.size, 100*(w_kept+b_kept)/(w_mask.size+b_mask.size))
     return (total_params + w_mask.size + b_mask.size, params_kept + w_kept + b_kept)
-    
+
+# copy normal w/b from source to des
 def normal_to_target(wb, wb_src):
     if(wb.size != wb_src.size):
-        print "Error: wb.size does not equal wb_src"
+        print "Error: wb.size does not equal to wb_src.size"
     np.copyto(wb, wb_src.reshape(wb.shape))
 
-# Assuming the net and net_target have the same params, and it should be so.
+# Assuming the net and net_target have the same params, which should be the case.
 total_params = 0
 params_kept = 0
 # print dir(net.params[param_name_list[0]])
@@ -84,8 +86,10 @@ for param_name in param_name_list:
         total_params, params_kept = display_layer_info(param_name, w_dns_mask, b_dns_mask, total_params, params_kept ) 
         dns_to_target(net_target.params[param_name][0].data, w_dns, w_dns_mask)
         dns_to_target(net_target.params[param_name][1].data, b_dns, b_dns_mask)
-        dns_to_target(net_target.params[param_name][2].data, w_dns, w_dns_mask)
-        dns_to_target(net_target.params[param_name][3].data, b_dns, b_dns_mask)
+        normal_to_target(net_target.params[param_name][2].data, w_dns_mask)
+        normal_to_target(net_target.params[param_name][3].data, b_dns_mask)
+        # dns_to_target(net_target.params[param_name][2].data, w_dns, w_dns_mask)
+        # dns_to_target(net_target.params[param_name][3].data, b_dns, b_dns_mask)
     # source: normal model, INQ mask all ones
     elif len(net.params[param_name]) == 2:
         w_src = net.params[param_name][0].data.astype(np.float32).flatten()

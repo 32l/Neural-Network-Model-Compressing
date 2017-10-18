@@ -15,10 +15,9 @@ __global__ void TPCalc(const int n, Dtype *param, Dtype *mask,
       if (param[i] >= threshold_) {
         // exp_ won't be larger than max_quantum_exp_, already checked in the
         int exp_ = floor(log2(4.0 * param[i] / 3.0));
-        // int exp_ = floor(log(4.0 * param[i] / 3.0) / log(2.0));
         // CHECK_LE(exp_, max_quantum_exp_) ;
         if (exp_ >= min_quantum_exp_) {
-          param[i] = exp2(exp_);
+          param[i] = exp2(Dtype(exp_));
           // param[i] = pow(2.0, exp_);
         }
         else {
@@ -29,7 +28,7 @@ __global__ void TPCalc(const int n, Dtype *param, Dtype *mask,
       else if (param[i] <= -threshold_) {
         int exp_ = floor(log2(4.0 * (-param[i]) / 3.0));
         if (exp_ >= min_quantum_exp_) {
-          param[i] = -exp(exp_);
+          param[i] = -exp(Dtype(exp_));
         }
         else {
           param[i] = 0;
@@ -53,7 +52,7 @@ __global__ void TPCalc(const int n, Dtype *param, Dtype *mask,
 }
 
 template <typename Dtype>
-void INQProductLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype> *> &bottom,
+void INQInnerProductLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype> *> &bottom,
                                          const vector<Blob<Dtype> *> &top) {
   /* for two-power network */
   if (this->phase_ == TRAIN) {
@@ -149,7 +148,7 @@ void INQInnerProductLayer<Dtype>::Backward_gpu(
 
 
 template <typename Dtype>
-void INQConvolutionLayer<Dtype>::ComputeQuantumRange(
+void INQInnerProductLayer<Dtype>::ComputeQuantumRange(
     const Blob<Dtype> *blob, const Blob<Dtype> *blob_mask,
     const vector<float> portions, vector<Dtype> &quantum_values,
     const int &num_quantum_values, int &max_quantum_exp_,
@@ -220,18 +219,18 @@ void INQInnerProductLayer<Dtype>::ShapeIntoTwoPower(
   for (int i = 0; i < count; ++i) {
     if (mask[i] == 1) {
       ++num_not_yet_quantized;
-      sorted_param.push_back(param[i])
+      sorted_param.push_back(param[i]);
     }
   }
   // just an estimation
-  int num_init_not_quantized = round(Dytpe( num_not_yet_quantized)/(1.0 - previous_portion ));
+  int num_init_not_quantized = round(Dtype( num_not_yet_quantized)/(1.0 - previous_portion ));
   int num_not_tobe_quantized = num_init_not_quantized*(1.0-current_portion);
   int num_tobe_update = num_not_yet_quantized - num_not_tobe_quantized;
   
   if(num_tobe_update > 0){
     sort(sorted_param.begin(), sorted_param.end() );
-    Dtype threshold_ = sorted_param[num_not_tobe_quantized]
-    TPCalc<Dtype><<<CAFFE_GET_BLOCKS(count), CAFFE_CUDA_NUM_THREADS>>>(count, param, mask, threshold);
+    Dtype threshold_ = sorted_param[num_not_tobe_quantized];
+    TPCalc<Dtype><<<CAFFE_GET_BLOCKS(count), CAFFE_CUDA_NUM_THREADS>>>(count, param, mask, threshold_, max_quantum_exp_, min_quantum_exp_);
     CUDA_POST_KERNEL_CHECK;
 
     LOG(INFO) << "Shaping finished in INQ_conv... [gpu]";

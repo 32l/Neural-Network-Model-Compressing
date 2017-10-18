@@ -17,18 +17,18 @@ void INQConvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype> *> &bottom,
     this->blobs_.resize(4);
     // Intialize and fill the weight mask & bias mask
     this->blobs_[2].reset(new Blob<Dtype>(this->blobs_[0]->shape()));
-    shared_ptr<Filler<Dtype>> weight_mask_filler(
+    shared_ptr<Filler<Dtype> > weight_mask_filler(
         GetFiller<Dtype>(inq_conv_param.weight_mask_filler()));
     weight_mask_filler->Fill(this->blobs_[2].get());
     this->blobs_[3].reset(new Blob<Dtype>(this->blobs_[1]->shape()));
-    shared_ptr<Filler<Dtype>> bias_mask_filler(
+    shared_ptr<Filler<Dtype> > bias_mask_filler(
         GetFiller<Dtype>(inq_conv_param.bias_mask_filler()));
     bias_mask_filler->Fill(this->blobs_[3].get());
   } else if (this->blobs_.size() == 1 && (!this->bias_term_)) {
     this->blobs_.resize(2);
     // Intialize and fill the weight mask
     this->blobs_[1].reset(new Blob<Dtype>(this->blobs_[0]->shape()));
-    shared_ptr<Filler<Dtype>> bias_mask_filler(
+    shared_ptr<Filler<Dtype> > bias_mask_filler(
         GetFiller<Dtype>(inq_conv_param.bias_mask_filler()));
     bias_mask_filler->Fill(this->blobs_[1].get());
   }
@@ -235,7 +235,7 @@ void INQConvolutionLayer<Dtype>::ShapeIntoTwoPower(
   for (int i = 0; i < count; ++i) {
     if (mask[i] == 1) {
       ++num_not_yet_quantized;
-      sorted_param.push_back(param[i])
+      sorted_param.push_back(param[i]);
     }
   }
   // just an estimation

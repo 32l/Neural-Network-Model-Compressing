@@ -10,6 +10,13 @@ __global__ void SGDUpdate(int N, Dtype* g, Dtype* h,
     g[i] = h[i] = momentum*h[i] + local_rate*g[i];
   }
 }
+
+/*
+    sgd_update_gpu(net_params[param_id]->count(),
+        net_params[param_id]->mutable_gpu_diff(),
+        history_[param_id]->mutable_gpu_data(),
+        momentum, local_rate);
+*/
 template <typename Dtype>
 void sgd_update_gpu(int N, Dtype* g, Dtype* h, Dtype momentum,
     Dtype local_rate) {

@@ -236,12 +236,13 @@ void SGDSolver<Dtype>::ComputeUpdateValue(int param_id, Dtype rate) {
               history_[param_id]->mutable_cpu_data());
 
     /********** for neural network model compression **********/
-    if(std::find(mask_param_ids_.begin(), mask_param_ids_.end(), learnable_param_ids_[param_id blob_to_skip]) != mask_param_ids_.end()) {
-      std::cout << "Using a mask layer ..." << std::endl;
-      CHECK_EQ(net_params[param_id]-> count(), net_params[param_id+blob_to_skip]-> count()) <"Blobs' count should be the same with its Mask' count !!";
+    if(std::find(mask_param_ids_.begin(), mask_param_ids_.end(), learnable_param_ids_[param_id + blob_to_skip]) != mask_param_ids_.end()) {
+      // std::cout << "Using a mask layer ..." << std::endl;
+      CHECK_EQ(net_params[param_id]-> count(), net_params[param_id+blob_to_skip]-> count()) <<"Blobs' count should be the same with its Mask' count !!";
+      // history_diff is an alias for history_
       Dtype* history_diff = history_[param_id]->mutable_cpu_data();
       const Dtype * mask = net_params[param_id + blob_to_skip]->cpu_data();
-      caffe_copy(net_params[param_id]->count(), history_[param_id]->cpu_data(), temp_[param_i->mutable_cpu_data());
+      caffe_copy(net_params[param_id]->count(), history_[param_id]->cpu_data(), temp_[param_id]->mutable_cpu_data());
       caffe_mul(net_params[param_id]->count(), temp_[param_id]->cpu_data(), mask, history_diff);
     }
     /**********************************************************/

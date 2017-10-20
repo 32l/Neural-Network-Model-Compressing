@@ -241,9 +241,11 @@ void INQConvolutionLayer<Dtype>::ShapeIntoTwoPower(
   // just an estimation
   int num_init_not_quantized =
       round(Dtype(num_not_yet_quantized) / (1.0 - previous_portion));
-  int num_not_tobe_quantized = num_init_not_quantized * (1.0 - current_portion);
+  int num_not_tobe_quantized = round(num_init_not_quantized * (1.0 - current_portion));
   int num_tobe_update = num_not_yet_quantized - num_not_tobe_quantized;
 
+  LOG(INFO)<<"init_not_quantized/not_tobe_quantized: "<<num_init_not_quantized<<"/"<<num_not_tobe_quantized; 
+  LOG(INFO) <<"to_update/not_yet_quantized/total: "<<num_tobe_update<<"/"<<num_not_yet_quantized<<"/"<<count;
   if (num_tobe_update > 0) {
     sort(sorted_param.begin(), sorted_param.end());
     Dtype threshold_ = sorted_param[num_not_tobe_quantized];

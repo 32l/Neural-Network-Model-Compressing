@@ -108,6 +108,13 @@ void SGDSolver<Dtype>::ApplyUpdate() {
   ClipGradients();
   for (int param_id = 0; param_id < this->net_->learnable_params().size();
        ++param_id) {
+    /********** for neural network model compression **********/
+    const vector<int> &mask_param_ids_ = this->net_->mask_param_ids();
+    const vector<int> &learnable_param_ids_ = this->net_->learnable_param_ids();
+    if(std::find(mask_param_ids_.begin(), mask_param_ids_.end(), learnable_param_ids_[param_id]) != mask_param_ids_.end()){
+      continue;
+    }
+    /***********************************************************/
     Normalize(param_id);
     Regularize(param_id);
     ComputeUpdateValue(param_id, rate);
@@ -215,12 +222,30 @@ void SGDSolver<Dtype>::ComputeUpdateValue(int param_id, Dtype rate) {
   const vector<float>& net_params_lr = this->net_->params_lr();
   Dtype momentum = this->param_.momentum();
   Dtype local_rate = rate * net_params_lr[param_id];
+  /********** for neural network model compression **********/
+  int blob_to_skip = 2;
+  const vector<int> &mask_param_ids_ = this->net_->mask_param_ids();
+  const vector<int> &learnable_param_ids_ = this->net_->learnable_param_ids();
+  /**********************************************************/
+
   // Compute the update to history, then copy it to the parameter diff.
   switch (Caffe::mode()) {
   case Caffe::CPU: {
     caffe_cpu_axpby(net_params[param_id]->count(), local_rate,
               net_params[param_id]->cpu_diff(), momentum,
               history_[param_id]->mutable_cpu_data());
+
+    /********** for neural network model compression **********/
+    if(std::find(mask_param_ids_.begin(), mask_param_ids_.end(), learnable_param_ids_[param_id blob_to_skip]) != mask_param_ids_.end()) {
+      std::cout << "Using a mask layer ..." << std::endl;
+      CHECK_EQ(net_params[param_id]-> count(), net_params[param_id+blob_to_skip]-> count()) <"Blobs' count should be the same with its Mask' count !!";
+      Dtype* history_diff = history_[param_id]->mutable_cpu_data();
+      const Dtype * mask = net_params[param_id + blob_to_skip]->cpu_data();
+      caffe_copy(net_params[param_id]->count(), history_[param_id]->cpu_data(), temp_[param_i->mutable_cpu_data());
+      caffe_mul(net_params[param_id]->count(), temp_[param_id]->cpu_data(), mask, history_diff);
+    }
+    /**********************************************************/
+
     caffe_copy(net_params[param_id]->count(),
         history_[param_id]->cpu_data(),
         net_params[param_id]->mutable_cpu_diff());

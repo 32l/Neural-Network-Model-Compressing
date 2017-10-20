@@ -17,7 +17,7 @@ import caffe
 
 help = '''
 Usage:
-    model2INQ_raw.py <source_prototxt.prototxt> <source_model.caffemodel> <INQ_net.prototxt> <INQ_model.caffemodel>
+    model2INQ_raw.py <source_prototxt.prototxt> <source_model.caffemodel> <INQ_net.prototxt> <INQ_raw_output_model.caffemodel>
 '''
 
 if len(sys.argv) != 5:
@@ -43,7 +43,7 @@ caffe.set_mode_cpu()
 
 net = caffe.Net(source_prototxt, caffe.TEST, weights=source_model)
 net_target = caffe.Net(target_prototxt, caffe.TEST)
-param_name_list = filter(lambda x: "conv" in x or "ip" in x or "fc" in x, net.params.keys())
+param_name_list = filter(lambda x: "conv" in x or "ip" in x or "fc" in x or "fire" in x, net.params.keys())
 
 # number of decorative marks
 num_mark = 55
@@ -96,8 +96,8 @@ for param_name in param_name_list:
         b_src = net.params[param_name][1].data.astype(np.float32).flatten()
         normal_to_target(net_target.params[param_name][0].data, w_src)
         normal_to_target(net_target.params[param_name][1].data, b_src)
-        normal_to_target(net_target.params[param_name][2].data, np.ones(net_target.params[param_name][2].shape()))
-        normal_to_target(net_target.params[param_name][3].data, np.ones(net_target.params[param_name][3].shape()))
+        normal_to_target(net_target.params[param_name][2].data, np.ones(net_target.params[param_name][2].shape))
+        normal_to_target(net_target.params[param_name][3].data, np.ones(net_target.params[param_name][3].shape))
     # source: Error
     else:
         print "Error: len of net.params[%s] is %d"%(param_name, len((net.params[param_name])))
@@ -114,7 +114,10 @@ if total_params != 0 and params_kept != 0:
     print "Compression Rate: %f"%(total_params / params_kept)
     print " "
     print "*"*num_mark
-print "Model has been converted from DNS to normal, saved as %s"%(target_model)
+
+print "Model(%s) has been converted to INQ raw model, saved as %s"%(source_model, target_model)
+print " "
+print "Model %s is ready for INQ training."%(target_model)
 print " "
 
 

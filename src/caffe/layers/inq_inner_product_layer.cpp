@@ -5,11 +5,12 @@
 #include <cmath>
 
 /*
-#include <cmath>
 #include "caffe/blob.hpp"
 #include "caffe/layer.hpp"
 #include "caffe/proto/caffe.pb.h"
 #include "caffe/util/math_functions.hpp"
+#include <cmath>
+
 */
 
 namespace caffe {
@@ -37,16 +38,18 @@ void INQInnerProductLayer<Dtype>::LayerSetUp(
     weight_shape[1] = K_;
     this->blobs_[0].reset(new Blob<Dtype>(weight_shape));
     // fill the weights
-    shared_ptr<Filler<Dtype> > weight_filler(GetFiller<Dtype>(this->layer_param_.inner_product_param().weight_filler()));
+    shared_ptr<Filler<Dtype> > weight_filler(GetFiller<Dtype>(
+        this->layer_param_.inner_product_param().weight_filler()));
     weight_filler->Fill(this->blobs_[0].get());
     // If necessary, intiialize and fill the bias term
-    if (this->bias_term_){
+    if (this->bias_term_) {
       vector<int> bias_shape(1, N_);
       this->blobs_[1].reset(new Blob<Dtype>(bias_shape));
-      shared_ptr<Filler<Dtype> > bias_filler(GetFiller<Dtype>(this->layer_param_.inner_product_param().bias_filler()));
+      shared_ptr<Filler<Dtype> > bias_filler(GetFiller<Dtype>(
+          this->layer_param_.inner_product_param().bias_filler()));
       bias_filler->Fill(this->blobs_[1].get());
     }
-  }  // parameter initialization
+  } // parameter initialization
   this->param_propagate_down_.resize(this->blobs_.size(), true);
 
   /********** for neural network model compression **********/
@@ -67,16 +70,19 @@ void INQInnerProductLayer<Dtype>::LayerSetUp(
     this->blobs_.resize(4);
     // Intialize and fill the weight_mask & bias_mask
     this->blobs_[2].reset(new Blob<Dtype>(this->blobs_[0]->shape()));
-    shared_ptr<Filler<Dtype> > weight_mask_filler(GetFiller<Dtype>(inq_inner_param.weight_mask_filler()));
+    shared_ptr<Filler<Dtype> > weight_mask_filler(
+        GetFiller<Dtype>(inq_inner_param.weight_mask_filler()));
     weight_mask_filler->Fill(this->blobs_[2].get());
     this->blobs_[3].reset(new Blob<Dtype>(this->blobs_[1]->shape()));
-    shared_ptr<Filler<Dtype> > bias_mask_filler(GetFiller<Dtype>(inq_inner_param.bias_mask_filler()));
+    shared_ptr<Filler<Dtype> > bias_mask_filler(
+        GetFiller<Dtype>(inq_inner_param.bias_mask_filler()));
     bias_mask_filler->Fill(this->blobs_[3].get());
   } else if (this->blobs_.size() == 1 && (!this->bias_term_)) {
     this->blobs_.resize(2);
     // Intialize and fill the weight_mask
     this->blobs_[1].reset(new Blob<Dtype>(this->blobs_[0]->shape()));
-    shared_ptr<Filler<Dtype> > weight_mask_filler(GetFiller<Dtype>(inq_inner_param.weight_mask_filler()));
+    shared_ptr<Filler<Dtype> > weight_mask_filler(
+        GetFiller<Dtype>(inq_inner_param.weight_mask_filler()));
     weight_mask_filler->Fill(this->blobs_[1].get());
   }
   // Get the max power
@@ -86,8 +92,8 @@ void INQInnerProductLayer<Dtype>::LayerSetUp(
 }
 
 template <typename Dtype>
-void INQInnerProductLayer<Dtype>::Reshape(
-    const vector<Blob<Dtype> *> &bottom, const vector<Blob<Dtype> *> &top) {
+void INQInnerProductLayer<Dtype>::Reshape(const vector<Blob<Dtype> *> &bottom,
+                                          const vector<Blob<Dtype> *> &top) {
   // Figure out the dimensions
   const int axis = bottom[0]->CanonicalAxisIndex(
       this->layer_param_.inner_product_param().axis());
@@ -239,8 +245,8 @@ void INQInnerProductLayer<Dtype>::ComputeQuantumRange(
   } else {
     if (updated == 0) {
       // normal situation (nothing quantized yet)
-      LOG_IF(INFO, portion[0] != 0) << "Warning: nothing quantized yet, "
-                                       "portion should probably start with "
+      LOG_IF(INFO, portions_[0] != 0) << "Warning: nothing quantized yet, "
+                                       "portions should probably start with "
                                        "0%%!";
       max_quantum_exp_ =
           floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
@@ -249,20 +255,20 @@ void INQInnerProductLayer<Dtype>::ComputeQuantumRange(
           floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
     }
   }
-/*
-  if (portions[0] == 0) {
-    CHECK_EQ(updated, 0) << updated
-                         << " updated values while there should be none!";
-    max_quantum_exp_ =
-        floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
-  } else {
-    max_quantum_exp_ = round(log(max_value_quantized) / log(2.0));
-    int max_tobe_quantized_exp_ =
-        floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
-    CHECK_LE(max_tobe_quantized_exp_, max_quantum_exp_)
-        << "New quantum exp is greater than the one already got!";
-  }
-*/  
+  /*
+    if (portions[0] == 0) {
+      CHECK_EQ(updated, 0) << updated
+                           << " updated values while there should be none!";
+      max_quantum_exp_ =
+          floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
+    } else {
+      max_quantum_exp_ = round(log(max_value_quantized) / log(2.0));
+      int max_tobe_quantized_exp_ =
+          floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
+      CHECK_LE(max_tobe_quantized_exp_, max_quantum_exp_)
+          << "New quantum exp is greater than the one already got!";
+    }
+  */
   min_quantum_exp_ = max_quantum_exp_ - num_quantum_values + 1;
   std::cout << "Max_power = " << max_quantum_exp_ << std::endl;
   std::cout << "Min_power = " << min_quantum_exp_ << std::endl;
@@ -300,15 +306,19 @@ void INQInnerProductLayer<Dtype>::ShapeIntoTwoPower(
   // just an estimation
   int num_init_not_quantized =
       round(Dtype(num_not_yet_quantized) / (1.0 - previous_portion));
-  int num_not_tobe_quantized = round(num_init_not_quantized * (1.0 - current_portion));
+  int num_not_tobe_quantized =
+      round(num_init_not_quantized * (1.0 - current_portion));
   int num_tobe_update = num_not_yet_quantized - num_not_tobe_quantized;
 
-  LOG(INFO)<<"init_not_quantized/not_tobe_quantized: "<<num_init_not_quantized<<"/"<<num_not_tobe_quantized;
-  LOG(INFO) <<"to_update/not_yet_quantized/total: "<<num_tobe_update<<"/"<<num_not_yet_quantized<<"/"<<count;
-  // LOG(INFO) <<"to_update/not_yet_quantized/total: "<<num_tobe_update<<num_not_yet_quantized<<count;
+  LOG(INFO) << "init_not_quantized/not_tobe_quantized: "
+            << num_init_not_quantized << "/" << num_not_tobe_quantized;
+  LOG(INFO) << "to_update/not_yet_quantized/total: " << num_tobe_update << "/"
+            << num_not_yet_quantized << "/" << count;
+  // LOG(INFO) <<"to_update/not_yet_quantized/total:
+  // "<<num_tobe_update<<num_not_yet_quantized<<count;
   if (num_tobe_update > 0) {
     sort(sorted_param.begin(), sorted_param.end());
-    Dtype threshold_ = sorted_param[num_not_tobe_quantized]; 
+    Dtype threshold_ = sorted_param[num_not_tobe_quantized];
     for (int i = 0; i < count; ++i) {
       if (mask[i] == 1) {
         if (param[i] >= threshold_) {
@@ -387,7 +397,7 @@ void INQInnerProductLayer<Dtype>::ShapeIntoTwoPower(
     }
   */
 
-}  // ShapeIntoTwoPower()
+} // ShapeIntoTwoPower()
 
 #ifdef CPU_ONLY
 STUB_GPU(INQInnerProductLayer);
@@ -396,4 +406,4 @@ STUB_GPU(INQInnerProductLayer);
 INSTANTIATE_CLASS(INQInnerProductLayer);
 REGISTER_LAYER_CLASS(INQInnerProduct);
 
-}  // namespace caffe
+} // namespace caffe

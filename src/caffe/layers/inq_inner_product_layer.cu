@@ -19,41 +19,38 @@ __global__ void TPCalc(const int n, Dtype *param, Dtype *mask,
         if (exp_ >= min_quantum_exp_) {
           param[i] = exp2(Dtype(exp_));
           // param[i] = pow(2.0, exp_);
-        }
-        else {
+        } else {
           param[i] = 0;
         }
         mask[i] = 0;
-      }
-      else if (param[i] <= -threshold_) {
+      } else if (param[i] <= -threshold_) {
         int exp_ = floor(log2(4.0 * (-param[i]) / 3.0));
         if (exp_ >= min_quantum_exp_) {
           param[i] = -exp(Dtype(exp_));
-        }
-        else {
+        } else {
           param[i] = 0;
         }
         mask[i] = 0;
       }
-/*
-      if (param[i] >= threshold) {
-        param[i] = exp2(floor(log2(4.0 * param[i] / 3.0)));
-        // param[i] = pow(2.0, floor(log(4.0 * param[i] / 3.0) / log(2.0)) );
-        mask[i] = 0;
-      } else if (param[i] <= -threshold) {
-        param[i] = -exp2(floor(log2(4.0 * (-param[i]) / 3.0)));
-        // param[i] = -pow(2.0, floor(log(4.0 * (-param[i]) / 3.0) / log(2.0))
-        // );
-        mask[i] = 0;
-      }
-*/
+      /*
+            if (param[i] >= threshold) {
+              param[i] = exp2(floor(log2(4.0 * param[i] / 3.0)));
+              // param[i] = pow(2.0, floor(log(4.0 * param[i] / 3.0) / log(2.0))
+         ); mask[i] = 0; } else if (param[i] <= -threshold) { param[i] =
+         -exp2(floor(log2(4.0 * (-param[i]) / 3.0)));
+              // param[i] = -pow(2.0, floor(log(4.0 * (-param[i]) / 3.0) /
+         log(2.0))
+              // );
+              mask[i] = 0;
+            }
+      */
     }
   }
 }
 
 template <typename Dtype>
-void INQInnerProductLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype> *> &bottom,
-                                         const vector<Blob<Dtype> *> &top) {
+void INQInnerProductLayer<Dtype>::Forward_gpu(
+    const vector<Blob<Dtype> *> &bottom, const vector<Blob<Dtype> *> &top) {
   /* for two-power network */
   if (this->phase_ == TRAIN) {
     if (this->iter_ == 0) {
@@ -90,7 +87,7 @@ void INQInnerProductLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype> *> &botto
     }
   }
 
-  const Dtype *weight = this->blobs_[0]->mutable_gpu_data(); 
+  const Dtype *weight = this->blobs_[0]->mutable_gpu_data();
   const Dtype *bottom_data = bottom[0]->gpu_data();
   Dtype *top_data = top[0]->mutable_gpu_data();
 
@@ -146,14 +143,13 @@ void INQInnerProductLayer<Dtype>::Backward_gpu(
   }
 }
 
-
 template <typename Dtype>
 void INQInnerProductLayer<Dtype>::ComputeQuantumRange(
     const Blob<Dtype> *blob, const Blob<Dtype> *blob_mask,
     const vector<float> portions, vector<Dtype> &quantum_values,
     const int &num_quantum_values, int &max_quantum_exp_,
     int &min_quantum_exp_) {
-      
+
   quantum_values.resize(2 * num_quantum_values + 1);
   const Dtype *values = blob->cpu_data();
   const Dtype *mask = blob_mask->cpu_data();
@@ -166,14 +162,12 @@ void INQInnerProductLayer<Dtype>::ComputeQuantumRange(
       if (fabs(values[k]) > max_value_tobe_quantized) {
         max_value_tobe_quantized = fabs(values[k]);
       }
-    }
-    else if (mask[k] == 0) {
+    } else if (mask[k] == 0) {
       if (fabs(values[k]) > max_value_quantized) {
         max_value_quantized = fabs(values[k]);
       }
       ++updated;
-    }
-    else {
+    } else {
       LOG(ERROR) << "Mask value is not 0, nor 1, in tp_inner_product_layer";
     }
   }
@@ -185,11 +179,11 @@ void INQInnerProductLayer<Dtype>::ComputeQuantumRange(
     max_quantum_exp_ = round(log(max_value_quantized) / log(2.0));
     int max_tobe_quantized_exp_ =
         floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
-    CHECK_GE(max_quantized_exp_, max_tobe_quantized_exp_);
+    CHECK_GE(max_quantum_exp_, max_tobe_quantized_exp_);
   } else {
     if (updated == 0) {
       // normal situation (nothing quantized yet)
-      LOG_IF(INFO, portion[0] != 0) << "Warning: nothing quantized yet, "
+      LOG_IF(INFO, portions_[0] != 0) << "Warning: nothing quantized yet, "
                                        "portion should probably start with "
                                        "0%%!";
       max_quantum_exp_ =
@@ -200,21 +194,21 @@ void INQInnerProductLayer<Dtype>::ComputeQuantumRange(
     }
   }
 
-/*
-  if (portions[0] == 0) {
-    CHECK_EQ(updated, 0) << updated
-                         << " updated values while there should be none!";
-    max_quantum_exp_ =
-        floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
-  }
-  else {
-    max_quantum_exp_ = round(log(max_value_quantized) / log(2.0));
-    int max_tobe_quantized_exp_ =
-        floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
-    CHECK_LE(max_tobe_quantized_exp_, max_quantum_exp_)
-        << "New quantum exp is greater than the one already got!";
-  }
-*/
+  /*
+    if (portions[0] == 0) {
+      CHECK_EQ(updated, 0) << updated
+                           << " updated values while there should be none!";
+      max_quantum_exp_ =
+          floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
+    }
+    else {
+      max_quantum_exp_ = round(log(max_value_quantized) / log(2.0));
+      int max_tobe_quantized_exp_ =
+          floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
+      CHECK_LE(max_tobe_quantized_exp_, max_quantum_exp_)
+          << "New quantum exp is greater than the one already got!";
+    }
+  */
   min_quantum_exp_ = max_quantum_exp_ - num_quantum_values + 1;
   std::cout << "Max_power = " << max_quantum_exp_ << std::endl;
   std::cout << "Min_power = " << min_quantum_exp_ << std::endl;
@@ -224,7 +218,6 @@ void INQInnerProductLayer<Dtype>::ComputeQuantumRange(
   }
   quantum_values[num_quantum_values] = 0;
 }
-
 
 template <typename Dtype>
 void INQInnerProductLayer<Dtype>::ShapeIntoTwoPower(
@@ -247,50 +240,52 @@ void INQInnerProductLayer<Dtype>::ShapeIntoTwoPower(
     }
   }
   // just an estimation
-  int num_init_not_quantized = round(Dtype( num_not_yet_quantized)/(1.0 - previous_portion ));
-  int num_not_tobe_quantized = num_init_not_quantized*(1.0-current_portion);
+  int num_init_not_quantized =
+      round(Dtype(num_not_yet_quantized) / (1.0 - previous_portion));
+  int num_not_tobe_quantized = num_init_not_quantized * (1.0 - current_portion);
   int num_tobe_update = num_not_yet_quantized - num_not_tobe_quantized;
-  
-  if(num_tobe_update > 0){
-    sort(sorted_param.begin(), sorted_param.end() );
+
+  if (num_tobe_update > 0) {
+    sort(sorted_param.begin(), sorted_param.end());
     Dtype threshold_ = sorted_param[num_not_tobe_quantized];
-    TPCalc<Dtype><<<CAFFE_GET_BLOCKS(count), CAFFE_CUDA_NUM_THREADS>>>(count, param, mask, threshold_, max_quantum_exp_, min_quantum_exp_);
+    TPCalc<Dtype><<<CAFFE_GET_BLOCKS(count), CAFFE_CUDA_NUM_THREADS>>>(
+        count, param, mask, threshold_, max_quantum_exp_, min_quantum_exp_);
     CUDA_POST_KERNEL_CHECK;
 
     LOG(INFO) << "Shaping finished in INQ_conv... [gpu]";
   }
 
-/*
-  for (int i = 0; i < count; ++i) {
-    if (mask[i] == 0) {
-      updated++;
-    }
-  }
-
-  int left = count - updated;
-  int update = floor(count * current_portion) - updated;
-
-  vector<Dtype> sort_param(left);
-
-  int k = 0;
-  if (update > 0) {
+  /*
     for (int i = 0; i < count; ++i) {
-      if (mask[i] == 1) {
-        sort_param[k++] = fabs(param[i]);
+      if (mask[i] == 0) {
+        updated++;
       }
     }
-    CHECK_EQ(k, left) << "Num of weights/bias that are not in 2 power form "
-                         "does NOT match the portion!";
-    sort(sort_param.begin(), sort_param.end());
-    Dtype threshold = sort_param[left - update];
 
-    TPCalc<Dtype><<<CAFFE_GET_BLOCKS(count), CAFFE_CUDA_NUM_THREADS>>>(
-        count, param, mask, threshold);
-    CUDA_POST_KERNEL_CHECK;
+    int left = count - updated;
+    int update = floor(count * current_portion) - updated;
 
-    LOG(INFO) << "Shaping finished in tp_inner... [gpu]";
-  }
-*/
+    vector<Dtype> sort_param(left);
+
+    int k = 0;
+    if (update > 0) {
+      for (int i = 0; i < count; ++i) {
+        if (mask[i] == 1) {
+          sort_param[k++] = fabs(param[i]);
+        }
+      }
+      CHECK_EQ(k, left) << "Num of weights/bias that are not in 2 power form "
+                           "does NOT match the portion!";
+      sort(sort_param.begin(), sort_param.end());
+      Dtype threshold = sort_param[left - update];
+
+      TPCalc<Dtype><<<CAFFE_GET_BLOCKS(count), CAFFE_CUDA_NUM_THREADS>>>(
+          count, param, mask, threshold);
+      CUDA_POST_KERNEL_CHECK;
+
+      LOG(INFO) << "Shaping finished in tp_inner... [gpu]";
+    }
+  */
 }
 
 INSTANTIATE_LAYER_GPU_FUNCS(INQInnerProductLayer);

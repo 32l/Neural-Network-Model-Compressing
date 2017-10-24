@@ -184,11 +184,11 @@ void INQConvolutionLayer<Dtype>::ComputeQuantumRange(
     max_quantum_exp_ = round(log(max_value_quantized) / log(2.0));
     int max_tobe_quantized_exp_ =
         floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
-    CHECK_GE(max_quantized_exp_, max_tobe_quantized_exp_);
+    CHECK_GE(max_quantum_exp_, max_tobe_quantized_exp_);
   } else {
     if (updated == 0) {
       // normal situation (nothing quantized yet)
-      LOG_IF(INFO, portion[0] != 0) << "Warning: nothing quantized yet, "
+      LOG_IF(INFO, portions_[0] != 0) << "Warning: nothing quantized yet, "
                                        "portion should probably start with "
                                        "0%%!";
       max_quantum_exp_ =

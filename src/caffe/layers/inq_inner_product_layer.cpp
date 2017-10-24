@@ -216,8 +216,8 @@ void INQInnerProductLayer<Dtype>::ComputeQuantumRange(
   quantum_values.resize(2 * num_quantum_values + 1);
   const Dtype *values = blob->cpu_data();
   const Dtype *mask = blob_mask->cpu_data();
-  Dtype max_value_tobe_quantized = 0;
-  Dtype max_value_quantized = 0;
+  Dtype max_value_tobe_quantized = INT_MIN;
+  Dtype max_value_quantized = INT_MIN;
   int updated = 0;
   for (unsigned int k = 0; k < blob->count(); ++k) {
     if (mask[k] == 1) {
@@ -234,14 +234,14 @@ void INQInnerProductLayer<Dtype>::ComputeQuantumRange(
     }
   }
 
-  if (max_value_quantized != 0.0) {
+  if (max_value_quantized != INT_MIN) {
     // normal situation
     CHECK_GT(updated, 0) << "max_value_quantized is not 0.0, but updated is "
                             "0!";
     max_quantum_exp_ = round(log(max_value_quantized) / log(2.0));
     int max_tobe_quantized_exp_ =
         floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
-    CHECK_GE(max_quantized_exp_, max_tobe_quantized_exp_);
+    CHECK_GE(max_quantum_exp_, max_tobe_quantized_exp_);
   } else {
     if (updated == 0) {
       // normal situation (nothing quantized yet)

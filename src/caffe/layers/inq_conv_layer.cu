@@ -243,7 +243,7 @@ void INQConvolutionLayer<Dtype>::ShapeIntoTwoPower(
   for (int i = 0; i < count; ++i) {
     if (mask[i] == 1) {
       ++num_not_yet_quantized;
-      sorted_param.push_back(param[i]);
+      sorted_param.push_back(fabs(param[i]));
     }
   }
   // just an estimation

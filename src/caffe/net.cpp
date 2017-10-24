@@ -469,7 +469,7 @@ void Net<Dtype>::AppendParam(const NetParameter& param, const int layer_id,
       mask_param_ids_.push_back(learnable_param_id);
     }
     if (is_inq_param_) {
-      inq_param_ids_.push_back(learnable_param_ids);
+      inq_param_ids_.push_back(learnable_param_id);
     }
     /**********************************************************/
     has_params_lr_.push_back(param_spec->has_lr_mult());
@@ -517,7 +517,7 @@ void Net<Dtype>::AppendParam(const NetParameter& param, const int layer_id,
       mask_param_ids_.push_back(learnable_param_id);
     } else if (is_inq_param_) {
       // only stores the ids of INQ weights & bias, not the mask.
-      inq_param_ids_.push_back(learnable_param_ids);
+      inq_param_ids_.push_back(learnable_param_id);
     }
     /**********************************************************/
     if (param_spec->has_lr_mult()) {

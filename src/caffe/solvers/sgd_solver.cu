@@ -30,11 +30,13 @@ void sgd_update_gpu(int N, Dtype *g, Dtype *h, Dtype momentum,
   CUDA_POST_KERNEL_CHECK;
 }
 
+/*
 inq_sgd_update_gpu(net_params[param_id]->count(),
                    net_params[param_id + blobs_to_skip]->gpu_data(),
                    net_params[param_id]->mutable_gpu_diff(),
                    history_[param_id]->mutable_gpu_data(), momentum,
                    local_rate);
+*/
 
 template <typename Dtype>
 void inq_sgd_update_gpu(int N, const Dtype *mask, Dtype *g, Dtype *h,

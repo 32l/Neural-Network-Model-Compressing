@@ -1,4 +1,4 @@
-net: "modelscomtest/alexnet/train_val.prototxt"
+net: "models_compression/alexnet/train_val.prototxt"
 test_iter: 250
 test_interval: 1000
 base_lr: 0.001
@@ -10,5 +10,5 @@ max_iter: 112500
 momentum: 0.9
 weight_decay: 0.0005
 snapshot: 2500
-snapshot_prefix: "modelscomtest/alexnet/alexnet_train"
+snapshot_prefix: "models_compression/alexnet/alexnet_train"
 solver_mode: GPU

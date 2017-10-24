@@ -71,9 +71,9 @@ template <typename Dtype> void SGDSolver<Dtype>::PreSolve() {
   temp_.clear();
   for (int i = 0; i < net_params.size(); ++i) {
     const vector<int> &shape = net_params[i]->shape();
-    history_.push_back(shared_ptr<Blob<Dtype>>(new Blob<Dtype>(shape)));
-    update_.push_back(shared_ptr<Blob<Dtype>>(new Blob<Dtype>(shape)));
-    temp_.push_back(shared_ptr<Blob<Dtype>>(new Blob<Dtype>(shape)));
+    history_.push_back(shared_ptr<Blob<Dtype> >(new Blob<Dtype>(shape)));
+    update_.push_back(shared_ptr<Blob<Dtype> >(new Blob<Dtype>(shape)));
+    temp_.push_back(shared_ptr<Blob<Dtype> >(new Blob<Dtype>(shape)));
   }
 }
 
@@ -212,6 +212,11 @@ template <typename Dtype> void SGDSolver<Dtype>::Regularize(int param_id) {
 template <typename Dtype>
 void sgd_update_gpu(int N, Dtype *g, Dtype *h, Dtype momentum,
                     Dtype local_rate);
+template <typename Dtype>
+void inq_sgd_update_gpu(int N, const Dtype *mask, Dtype *g, Dtype *h, 
+                    Dtype momentum, Dtype local_rate);
+
+
 #endif
 
 template <typename Dtype>
@@ -222,7 +227,7 @@ void SGDSolver<Dtype>::ComputeUpdateValue(int param_id, Dtype rate) {
   Dtype local_rate = rate * net_params_lr[param_id];
   /********** for neural network model compression **********/
   int blobs_to_skip = 2;
-  const vector<int> &mask_param_ids_ = this->net_->mask_param_ids();
+  // const vector<int> &mask_param_ids_ = this->net_->mask_param_ids();
   const vector<int> &learnable_param_ids_ = this->net_->learnable_param_ids();
   const vector<int> &inq_param_ids_ = this->net_->inq_param_ids();
   bool is_inq_param_;

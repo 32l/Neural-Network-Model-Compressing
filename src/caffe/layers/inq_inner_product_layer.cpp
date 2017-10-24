@@ -309,10 +309,13 @@ void INQInnerProductLayer<Dtype>::ShapeIntoTwoPower(
   int num_not_tobe_quantized =
       round(num_init_not_quantized * (1.0 - current_portion));
   int num_tobe_update = num_not_yet_quantized - num_not_tobe_quantized;
-
-  LOG(INFO) << "init_not_quantized/not_tobe_quantized: "
+  LOG(INFO) << "portions: "<< previous_portion * 100 <<"%%, "
+            << current_portion * 100 << "%%";
+  LOG(INFO) << "not_yet_quantized/init_not_quantized/not_tobe_quantized: "
+            << num_not_yet_quantized << "/"
             << num_init_not_quantized << "/" << num_not_tobe_quantized;
-  LOG(INFO) << "to_update/not_yet_quantized/total: " << num_tobe_update << "/"
+  LOG(INFO) << "to_update/not_yet_quantized/total: " 
+            << num_tobe_update << "/"
             << num_not_yet_quantized << "/" << count;
   // LOG(INFO) <<"to_update/not_yet_quantized/total:
   // "<<num_tobe_update<<num_not_yet_quantized<<count;

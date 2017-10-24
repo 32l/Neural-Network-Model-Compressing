@@ -270,8 +270,11 @@ void INQConvolutionLayer<Dtype>::ShapeIntoTwoPower(
       round(num_init_not_quantized * (1.0 - current_portion));
   int num_tobe_update = num_not_yet_quantized - num_not_tobe_quantized;
 
-  LOG(INFO) << "portions: "<< previous_portion * 100 <<"%, "
-            << current_portion * 100 << "%";
+  LOG(INFO) << "portions: " << previous_portion * 100 <<"% -> "
+            << current_portion * 100 << "% ("
+            << "total: " 
+            << Dtype(count-num_not_yet_quantized)/count*100 << "% -> "
+            << Dtype(count-num_not_tobe_quantized)/count * 100 << ")";
   LOG(INFO) << "init_not_quantized/total: "
             << num_init_not_quantized << "/" 
             << count;            

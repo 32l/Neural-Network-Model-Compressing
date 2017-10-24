@@ -17,18 +17,18 @@ void INQConvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype> *> &bottom,
     this->blobs_.resize(4);
     // Intialize and fill the weight mask & bias mask
     this->blobs_[2].reset(new Blob<Dtype>(this->blobs_[0]->shape()));
-    shared_ptr<Filler<Dtype> > weight_mask_filler(
+    shared_ptr<Filler<Dtype>> weight_mask_filler(
         GetFiller<Dtype>(inq_conv_param.weight_mask_filler()));
     weight_mask_filler->Fill(this->blobs_[2].get());
     this->blobs_[3].reset(new Blob<Dtype>(this->blobs_[1]->shape()));
-    shared_ptr<Filler<Dtype> > bias_mask_filler(
+    shared_ptr<Filler<Dtype>> bias_mask_filler(
         GetFiller<Dtype>(inq_conv_param.bias_mask_filler()));
     bias_mask_filler->Fill(this->blobs_[3].get());
   } else if (this->blobs_.size() == 1 && (!this->bias_term_)) {
     this->blobs_.resize(2);
     // Intialize and fill the weight mask
     this->blobs_[1].reset(new Blob<Dtype>(this->blobs_[0]->shape()));
-    shared_ptr<Filler<Dtype> > bias_mask_filler(
+    shared_ptr<Filler<Dtype>> bias_mask_filler(
         GetFiller<Dtype>(inq_conv_param.bias_mask_filler()));
     bias_mask_filler->Fill(this->blobs_[1].get());
   }
@@ -190,22 +190,46 @@ void INQConvolutionLayer<Dtype>::ComputeQuantumRange(
       }
       ++updated;
     } else {
-      LOG(ERROR) << "Mask value is not 0, nor 1, in tp_inner_product_layer";
+      LOG(ERROR) << "Mask value must be either 0 or 1 !";
     }
   }
-  if (portions[0] == 0) {
-    CHECK_EQ(updated, 0) << updated
-                         << " updated values while there should be none!";
-    max_quantum_exp_ =
-        floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
-  } else {
+  
+  if (max_value_quantized != 0.0) {
+    // normal situation
+    CHECK_GT(updated, 0) << "max_value_quantized is not 0.0, but updated is "
+                            "0!";
     max_quantum_exp_ = round(log(max_value_quantized) / log(2.0));
     int max_tobe_quantized_exp_ =
         floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
-    CHECK_LE(max_tobe_quantized_exp_, max_quantum_exp_)
-        << "New quantum exp is greater than the one already got!";
+    CHECK_GE(max_quantized_exp_, max_tobe_quantized_exp_);
+  } else {
+    if (updated == 0) {
+      // normal situation (nothing quantized yet)
+      LOG_IF(INFO, portion[0] != 0) << "Warning: nothing quantized yet, "
+                                       "portion should probably start with "
+                                       "0%%!";
+      max_quantum_exp_ =
+          floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
+    } else { // DNS model (max_value_quantized ==0 && update != 0)
+      max_quantum_exp_ =
+          floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
+    }
   }
 
+  /*
+    if (portions[0] == 0) {
+      CHECK_EQ(updated, 0) << updated
+                           << " updated values while there should be none!";
+      max_quantum_exp_ =
+          floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
+    } else {
+      max_quantum_exp_ = round(log(max_value_quantized) / log(2.0));
+      int max_tobe_quantized_exp_ =
+          floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
+      CHECK_LE(max_tobe_quantized_exp_, max_quantum_exp_)
+          << "New quantum exp is greater than the one already got!";
+    }
+  */
   min_quantum_exp_ = max_quantum_exp_ - num_quantum_values + 1;
   std::cout << "Max_power = " << max_quantum_exp_ << std::endl;
   std::cout << "Min_power = " << min_quantum_exp_ << std::endl;
@@ -241,11 +265,14 @@ void INQConvolutionLayer<Dtype>::ShapeIntoTwoPower(
   // just an estimation
   int num_init_not_quantized =
       round(Dtype(num_not_yet_quantized) / (1.0 - previous_portion));
-  int num_not_tobe_quantized = round(num_init_not_quantized * (1.0 - current_portion));
+  int num_not_tobe_quantized =
+      round(num_init_not_quantized * (1.0 - current_portion));
   int num_tobe_update = num_not_yet_quantized - num_not_tobe_quantized;
 
-  LOG(INFO)<<"init_not_quantized/not_tobe_quantized: "<<num_init_not_quantized<<"/"<<num_not_tobe_quantized; 
-  LOG(INFO) <<"to_update/not_yet_quantized/total: "<<num_tobe_update<<"/"<<num_not_yet_quantized<<"/"<<count;
+  LOG(INFO) << "init_not_quantized/not_tobe_quantized: "
+            << num_init_not_quantized << "/" << num_not_tobe_quantized;
+  LOG(INFO) << "to_update/not_yet_quantized/total: " << num_tobe_update << "/"
+            << num_not_yet_quantized << "/" << count;
   if (num_tobe_update > 0) {
     sort(sorted_param.begin(), sorted_param.end());
     Dtype threshold_ = sorted_param[num_not_tobe_quantized];

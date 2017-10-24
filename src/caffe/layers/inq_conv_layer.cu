@@ -176,6 +176,30 @@ void INQConvolutionLayer<Dtype>::ComputeQuantumRange(
       LOG(ERROR) << "Mask value is not 0, nor 1, in tp_inner_product_layer";
     }
   }
+
+  if (max_value_quantized != 0.0) {
+    // normal situation
+    CHECK_GT(updated, 0) << "max_value_quantized is not 0.0, but updated is "
+                            "0!";
+    max_quantum_exp_ = round(log(max_value_quantized) / log(2.0));
+    int max_tobe_quantized_exp_ =
+        floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
+    CHECK_GE(max_quantized_exp_, max_tobe_quantized_exp_);
+  } else {
+    if (updated == 0) {
+      // normal situation (nothing quantized yet)
+      LOG_IF(INFO, portion[0] != 0) << "Warning: nothing quantized yet, "
+                                       "portion should probably start with "
+                                       "0%%!";
+      max_quantum_exp_ =
+          floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
+    } else { // DNS model (max_value_quantized ==0 && update != 0)
+      max_quantum_exp_ =
+          floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
+    }
+  }
+
+/*
   if (portions[0] == 0) {
     CHECK_EQ(updated, 0) << updated
                          << " updated values while there should be none!";
@@ -189,7 +213,7 @@ void INQConvolutionLayer<Dtype>::ComputeQuantumRange(
     CHECK_LE(max_tobe_quantized_exp_, max_quantum_exp_)
         << "New quantum exp is greater than the one already got!";
   }
-
+*/
   min_quantum_exp_ = max_quantum_exp_ - num_quantum_values + 1;
   std::cout << "Max_power = " << max_quantum_exp_ << std::endl;
   std::cout << "Min_power = " << min_quantum_exp_ << std::endl;

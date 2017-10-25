@@ -38,7 +38,8 @@ protected:
   int N_; // number of output
   bool bias_term_;
   Blob<Dtype> bias_multiplier_;
-
+  bool transpose_;  ///< if true, assume transposed weights
+  
 private:
   virtual void ComputeQuantumRange(const Blob<Dtype> *blob,
                                    const Blob<Dtype> *mask,

@@ -31,7 +31,7 @@ protected:
   virtual inline bool reverse_dimensions() { return false; }
   virtual void compute_output_shape();
 
-private:
+  // INQ functions & variables
   virtual void ComputeQuantumRange(const Blob<Dtype> *blob,
                                    const Blob<Dtype> *mask,
                                    const vector<float> portions,
@@ -39,11 +39,17 @@ private:
                                    const int &num_quantum_values,
                                    int &max_quantum_exp_,
                                    int &min_quantum_exp_);
-  virtual void ShapeIntoTwoPower(Blob<Dtype> *input_blob,
-                                 Blob<Dtype> *mask_blob,
-                                 const vector<float> &portions,
-                                 const int &max_quantum_exp_,
-                                 const int &min_quantum_exp_);
+  virtual void ShapeIntoTwoPower_cpu( Blob<Dtype> *input_blob,
+                                      Blob<Dtype> *mask_blob,
+                                      const vector<float> &portions,
+                                      const int &max_quantum_exp_,
+                                      const int &min_quantum_exp_);
+  virtual void ShapeIntoTwoPower_gpu( Blob<Dtype> *input_blob,
+                                      Blob<Dtype> *mask_blob,
+                                      const vector<float> &portions,
+                                      const int &max_quantum_exp_,
+                                      const int &min_quantum_exp_);                   
+                                 
   vector<float> portions_;
   int num_portions_;
   int num_weight_quantum_values_;

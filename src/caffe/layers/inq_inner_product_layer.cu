@@ -50,31 +50,31 @@ void INQInnerProductLayer<Dtype>::Forward_gpu(
     if (this->iter_ == 0) {
       // Make the corresponding weights & bias into two power form.
       if (this->blobs_.size() == 4 && (this->bias_term_)) {
-        LOG(INFO) << "Shaping the weights...";
+        LOG(INFO) << this->type() << " Shaping the weights...";
         ComputeQuantumRange(this->blobs_[0].get(), this->blobs_[2].get(),
                             this->portions_, weight_quantum_values_,
                             num_weight_quantum_values_, max_weight_quantum_exp_,
                             min_weight_quantum_exp_);
-        ShapeIntoTwoPower(this->blobs_[0].get(), this->blobs_[2].get(),
+        ShapeIntoTwoPower_gpu(this->blobs_[0].get(), this->blobs_[2].get(),
                           this->portions_, max_weight_quantum_exp_,
                           min_weight_quantum_exp_);
-        LOG(INFO) << "Shaping the bias...";
+
+        LOG(INFO) << this->type() << " Shaping the bias...";
         ComputeQuantumRange(this->blobs_[1].get(), this->blobs_[3].get(),
                             this->portions_, bias_quantum_values_,
                             num_bias_quantum_values_, max_bias_quantum_exp_,
                             min_bias_quantum_exp_);
-        ShapeIntoTwoPower(this->blobs_[1].get(), this->blobs_[3].get(),
+        ShapeIntoTwoPower_gpu(this->blobs_[1].get(), this->blobs_[3].get(),
                           this->portions_, max_bias_quantum_exp_,
                           min_bias_quantum_exp_);
-        LOG(INFO) << "Shaping done in INQ inner_product_layer";
       } else if (this->blobs_.size() == 2 && (!this->bias_term_)) {
-        LOG(INFO) << "Warning: No bias terms found... but continue...";
-        LOG(INFO) << "Shaping ONLY the weights...";
+        LOG(INFO) << "ERROR: No bias terms found... but continue...";
+        LOG(INFO) << this->type() << " Shaping the weights...";
         ComputeQuantumRange(this->blobs_[0].get(), this->blobs_[1].get(),
                             this->portions_, weight_quantum_values_,
                             num_weight_quantum_values_, max_weight_quantum_exp_,
                             min_weight_quantum_exp_);
-        ShapeIntoTwoPower(this->blobs_[0].get(), this->blobs_[1].get(),
+        ShapeIntoTwoPower_gpu(this->blobs_[0].get(), this->blobs_[1].get(),
                           this->portions_, max_weight_quantum_exp_,
                           min_weight_quantum_exp_);
       }
@@ -153,18 +153,9 @@ void INQInnerProductLayer<Dtype>::Backward_gpu(
                             bottom[0]->mutable_gpu_diff());
     }
   }
-
-  /*
-    if (propagate_down[0]) {
-      // const	Dtype *weightTmp = this->weight_tmp_.cpu_data();
-      // Gradient with respect to bottom data
-      caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, M_, K_, N_, (Dtype)1.,
-                            top_diff, this->blobs_[0]->gpu_data(), (Dtype)0.,
-                            bottom[0]->mutable_gpu_diff());
-    }
-  */
 }
 
+/*
 template <typename Dtype>
 void INQInnerProductLayer<Dtype>::ComputeQuantumRange(
     const Blob<Dtype> *blob, const Blob<Dtype> *blob_mask,
@@ -216,21 +207,21 @@ void INQInnerProductLayer<Dtype>::ComputeQuantumRange(
     }
   }
 
-  /*
-    if (portions[0] == 0) {
-      CHECK_EQ(updated, 0) << updated
-                           << " updated values while there should be none!";
-      max_quantum_exp_ =
-          floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
-    }
-    else {
-      max_quantum_exp_ = round(log(max_value_quantized) / log(2.0));
-      int max_tobe_quantized_exp_ =
-          floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
-      CHECK_LE(max_tobe_quantized_exp_, max_quantum_exp_)
-          << "New quantum exp is greater than the one already got!";
-    }
-  */
+  //
+  //  if (portions[0] == 0) {
+  //    CHECK_EQ(updated, 0) << updated
+  //                         << " updated values while there should be none!";
+  //    max_quantum_exp_ =
+  //        floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
+  //  }
+  //  else {
+  //    max_quantum_exp_ = round(log(max_value_quantized) / log(2.0));
+  //    int max_tobe_quantized_exp_ =
+  //        floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
+  //    CHECK_LE(max_tobe_quantized_exp_, max_quantum_exp_)
+  //        << "New quantum exp is greater than the one already got!";
+  //  }
+  //
   min_quantum_exp_ = max_quantum_exp_ - num_quantum_values + 1;
   std::cout << "Max_power = " << max_quantum_exp_ << std::endl;
   std::cout << "Min_power = " << min_quantum_exp_ << std::endl;
@@ -240,19 +231,29 @@ void INQInnerProductLayer<Dtype>::ComputeQuantumRange(
   }
   quantum_values[num_quantum_values] = 0;
 }
+*/
 
 template <typename Dtype>
-void INQInnerProductLayer<Dtype>::ShapeIntoTwoPower(
+void INQInnerProductLayer<Dtype>::ShapeIntoTwoPower_gpu(
     Blob<Dtype> *input_blob, Blob<Dtype> *mask_blob,
     const vector<float> &portions, const int &max_quantum_exp_,
     const int &min_quantum_exp_) {
   const float previous_portion = portions[0];
   const float current_portion = portions[1];
+
+  if (current_portion == 0) {
+    LOG(INFO) << "Current portion equals 0.0%, skipping ...";
+    return;
+  }
+  if ( max_quantum_exp_ == -100) {
+    LOG(INFO) << "All parameters already pruned away, skipping ...";
+    return;
+  }
+  // parameter statistics
   Dtype *param = input_blob->mutable_gpu_data();
   Dtype *mask = mask_blob->mutable_gpu_data();
 
   int count = input_blob->count();
-
   int num_not_yet_quantized = 0;
   vector<Dtype> sorted_param;
   for (int i = 0; i < count; ++i) {
@@ -263,9 +264,27 @@ void INQInnerProductLayer<Dtype>::ShapeIntoTwoPower(
   }
   // just an estimation
   int num_init_not_quantized =
-      round(Dtype(num_not_yet_quantized) / (1.0 - previous_portion));
-  int num_not_tobe_quantized = num_init_not_quantized * (1.0 - current_portion);
+    round(Dtype(num_not_yet_quantized) / (1.0 - previous_portion));
+  int num_not_tobe_quantized =
+    round(num_init_not_quantized * (1.0 - current_portion));
   int num_tobe_update = num_not_yet_quantized - num_not_tobe_quantized;
+
+  LOG(INFO) << "portions: " << previous_portion * 100 << "% -> "
+          << current_portion * 100 << "% ("
+          << "total: " << Dtype(count - num_not_yet_quantized) / count * 100
+          << "% -> " << Dtype(count - num_not_tobe_quantized) / count * 100
+          << "%"
+          << ")";
+  LOG(INFO) << "init_not_quantized/total: " << num_init_not_quantized << "/"
+          << count;
+  LOG(INFO) << "to_update/not_tobe_quantized/not_yet_quantized: "
+          << num_tobe_update << "/" << num_not_tobe_quantized << "/"
+          << num_not_yet_quantized;
+
+  // int num_init_not_quantized =
+  //     round(Dtype(num_not_yet_quantized) / (1.0 - previous_portion));
+  // int num_not_tobe_quantized = num_init_not_quantized * (1.0 - current_portion);
+  // int num_tobe_update = num_not_yet_quantized - num_not_tobe_quantized;
 
   if (num_tobe_update > 0) {
     sort(sorted_param.begin(), sorted_param.end());
@@ -273,42 +292,9 @@ void INQInnerProductLayer<Dtype>::ShapeIntoTwoPower(
     TPCalc<Dtype><<<CAFFE_GET_BLOCKS(count), CAFFE_CUDA_NUM_THREADS>>>(
         count, param, mask, threshold_, max_quantum_exp_, min_quantum_exp_);
     CUDA_POST_KERNEL_CHECK;
-
-    LOG(INFO) << "Shaping finished in INQ_conv... [gpu]";
   }
 
-  /*
-    for (int i = 0; i < count; ++i) {
-      if (mask[i] == 0) {
-        updated++;
-      }
-    }
-
-    int left = count - updated;
-    int update = floor(count * current_portion) - updated;
-
-    vector<Dtype> sort_param(left);
-
-    int k = 0;
-    if (update > 0) {
-      for (int i = 0; i < count; ++i) {
-        if (mask[i] == 1) {
-          sort_param[k++] = fabs(param[i]);
-        }
-      }
-      CHECK_EQ(k, left) << "Num of weights/bias that are not in 2 power form "
-                           "does NOT match the portion!";
-      sort(sort_param.begin(), sort_param.end());
-      Dtype threshold = sort_param[left - update];
-
-      TPCalc<Dtype><<<CAFFE_GET_BLOCKS(count), CAFFE_CUDA_NUM_THREADS>>>(
-          count, param, mask, threshold);
-      CUDA_POST_KERNEL_CHECK;
-
-      LOG(INFO) << "Shaping finished in tp_inner... [gpu]";
-    }
-  */
-}
+} // ShapeIntoTwoPower_gpu
 
 INSTANTIATE_LAYER_GPU_FUNCS(INQInnerProductLayer);
 

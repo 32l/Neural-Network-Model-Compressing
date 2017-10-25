@@ -73,30 +73,30 @@ void INQConvolutionLayer<Dtype>::Forward_cpu(
     if (this->iter_ == 0) {
       // Make the corresponding weights & bias into two power form.
       if (this->blobs_.size() == 4 && (this->bias_term_)) {
-        std::cout << "Shaping the weights..." << std::endl;
+        LOG(INFO) << this->type() << " Shaping the weights...";
         ComputeQuantumRange(this->blobs_[0].get(), this->blobs_[2].get(),
                             this->portions_, weight_quantum_values_,
                             num_weight_quantum_values_, max_weight_quantum_exp_,
                             min_weight_quantum_exp_);
-        ShapeIntoTwoPower(this->blobs_[0].get(), this->blobs_[2].get(),
+        ShapeIntoTwoPower_cpu(this->blobs_[0].get(), this->blobs_[2].get(),
                           this->portions_, max_weight_quantum_exp_,
                           min_weight_quantum_exp_);
-        std::cout << "Shaping the bias..." << std::endl;
+        LOG(INFO) << this->type() << " Shaping the bias...";
         ComputeQuantumRange(this->blobs_[1].get(), this->blobs_[3].get(),
                             this->portions_, bias_quantum_values_,
                             num_bias_quantum_values_, max_bias_quantum_exp_,
                             min_bias_quantum_exp_);
-        ShapeIntoTwoPower(this->blobs_[1].get(), this->blobs_[3].get(),
+        ShapeIntoTwoPower_cpu(this->blobs_[1].get(), this->blobs_[3].get(),
                           this->portions_, max_bias_quantum_exp_,
                           min_bias_quantum_exp_);
       } else if (this->blobs_.size() == 2 && (!this->bias_term_)) {
         LOG(INFO) << "ERROR: No bias terms found... but continue...";
+        LOG(INFO) << this->type() << " Shaping the weights...";
         ComputeQuantumRange(this->blobs_[0].get(), this->blobs_[1].get(),
                             this->portions_, weight_quantum_values_,
                             num_weight_quantum_values_, max_weight_quantum_exp_,
                             min_weight_quantum_exp_);
-        std::cout << "Shaping ONLY the weights..." << std::endl;
-        ShapeIntoTwoPower(this->blobs_[0].get(), this->blobs_[1].get(),
+        ShapeIntoTwoPower_cpu(this->blobs_[0].get(), this->blobs_[1].get(),
                           this->portions_, max_weight_quantum_exp_,
                           min_weight_quantum_exp_);
       }
@@ -195,22 +195,26 @@ void INQConvolutionLayer<Dtype>::ComputeQuantumRange(
     }
   }
   
-
+  // Get the max_quantum_exp_
   if (fabs(max_value_quantized) <= FLT_EPSILON) { // DNS init model
-    CHECK_GT(updated, 0) << "max_value_quantized(" << max_value_quantized 
+    CHECK_GT(updated, 0) << "max_value_quantized(" << max_value_quantized
                          << ") is not 0.0, but updated is 0!";
-    CHECK_GT(max_value_tobe_quantized, FLT_EPSILON) << "error wiht DNS raw model!";
-    max_quantum_exp_ = floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
+    if (max_value_tobe_quantized == INT_MIN){ // all pruned away already
+      max_quantum_exp_ = -100;  // set to a special number.
+    } else {
+      CHECK_GT(max_value_tobe_quantized, FLT_EPSILON) << "error wiht DNS raw model!";
+      max_quantum_exp_ = floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
+    }
   } else if (max_value_quantized == INT_MIN) { // normal init model
     CHECK_EQ(updated, 0) << "Normal init model, updated should be 0!";
     CHECK_GT(max_value_tobe_quantized, FLT_EPSILON) << "error wiht normal init model!";
     max_quantum_exp_ = floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
   } else { // normal situation, both quantized and not quantized exist
     CHECK_GT(max_value_tobe_quantized, FLT_EPSILON);
-    CHECK_GT(max_value_quantized, max_value_tobe_quantized);
+    int max_tobe_quantized_exp_ = floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
     max_quantum_exp_ = round(log(max_value_quantized) / log(2.0));
+    CHECK_GE(max_quantum_exp_, max_tobe_quantized_exp_) << "Hard situation...";
   }
-    
 
 /*
   if (max_value_quantized != INT_MIN) {
@@ -261,15 +265,21 @@ void INQConvolutionLayer<Dtype>::ComputeQuantumRange(
 }
 
 template <typename Dtype>
-void INQConvolutionLayer<Dtype>::ShapeIntoTwoPower(
+void INQConvolutionLayer<Dtype>::ShapeIntoTwoPower_cpu(
     Blob<Dtype> *input_blob, Blob<Dtype> *mask_blob,
     const vector<float> &portions, const int &max_quantum_exp_,
     const int &min_quantum_exp_) {
   const float previous_portion = portions[0];
   const float current_portion = portions[1];
   if (current_portion == 0) {
+    LOG(INFO) << "Current portion equals 0.0%, skipping ...";
     return;
   }
+  if ( max_quantum_exp_ == -100) {
+    LOG(INFO) << "All parameters already pruned away, skipping ...";
+    return;
+  }
+  // parameter statistics
   Dtype *param = input_blob->mutable_cpu_data();
   Dtype *mask = mask_blob->mutable_cpu_data();
   int count = input_blob->count();

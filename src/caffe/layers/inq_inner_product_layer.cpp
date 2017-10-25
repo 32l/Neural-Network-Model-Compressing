@@ -129,12 +129,12 @@ void INQInnerProductLayer<Dtype>::Forward_cpu(
                             this->portions_, weight_quantum_values_,
                             num_weight_quantum_values_, max_weight_quantum_exp_,
                             min_weight_quantum_exp_);
-        ShapeIntoTwoPower(this->blobs_[0].get(), this->blobs_[2].get(),
+        ShapeIntoTwoPower_cpu(this->blobs_[0].get(), this->blobs_[2].get(),
                           this->portions_, max_weight_quantum_exp_,
                           min_weight_quantum_exp_);
 
-        LOG(INFO) << this->type() << "Shaping the bias...";
-        ComputeQuantumRange(this->blobs_[1].get(), this->blobs_[3].get(),
+        LOG(INFO) << this->type() << " Shaping the bias...";
+        ComputeQuantumRange_cpu(this->blobs_[1].get(), this->blobs_[3].get(),
                             this->portions_, bias_quantum_values_,
                             num_bias_quantum_values_, max_bias_quantum_exp_,
                             min_bias_quantum_exp_);
@@ -143,12 +143,12 @@ void INQInnerProductLayer<Dtype>::Forward_cpu(
                           min_bias_quantum_exp_);
       } else if (this->blobs_.size() == 2 && (!this->bias_term_)) {
         LOG(INFO) << "ERROR: No bias terms found... but continue...";
-        std::cout << "Shaping ONLY the weights..." << std::endl;
+        LOG(INFO) << this->type() << " Shaping the weights...";
         ComputeQuantumRange(this->blobs_[0].get(), this->blobs_[1].get(),
                             this->portions_, weight_quantum_values_,
                             num_weight_quantum_values_, max_weight_quantum_exp_,
                             min_weight_quantum_exp_);
-        ShapeIntoTwoPower(this->blobs_[0].get(), this->blobs_[1].get(),
+        ShapeIntoTwoPower_cpu(this->blobs_[0].get(), this->blobs_[1].get(),
                           this->portions_, max_weight_quantum_exp_,
                           min_weight_quantum_exp_);
       }
@@ -246,7 +246,7 @@ void INQInnerProductLayer<Dtype>::ComputeQuantumRange(
     }
   }
 
-
+  // Get the max_quantum_exp_
   if (fabs(max_value_quantized) <= FLT_EPSILON) { // DNS init model
     CHECK_GT(updated, 0) << "max_value_quantized(" << max_value_quantized
                          << ") is not 0.0, but updated is 0!";
@@ -262,49 +262,11 @@ void INQInnerProductLayer<Dtype>::ComputeQuantumRange(
     max_quantum_exp_ = floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
   } else { // normal situation, both quantized and not quantized exist
     CHECK_GT(max_value_tobe_quantized, FLT_EPSILON);
-    CHECK_GT(max_value_quantized, max_value_tobe_quantized);
+    int max_tobe_quantized_exp_ = floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
     max_quantum_exp_ = round(log(max_value_quantized) / log(2.0));
+    CHECK_GE(max_quantum_exp_, max_tobe_quantized_exp_) << "Hard situation...";
   }
 
-
-/*
-  if (max_value_quantized != INT_MIN) {
-    // normal situation
-    CHECK_GT(updated, 0) << "max_value_quantized is not 0.0, but updated is "
-                            "0!";
-    max_quantum_exp_ = round(log(max_value_quantized) / log(2.0));
-    int max_tobe_quantized_exp_ =
-        floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
-    CHECK_GE(max_quantum_exp_, max_tobe_quantized_exp_);
-  } else {
-    if (updated == 0) {
-      // normal situation (nothing quantized yet)
-      LOG_IF(INFO, portions_[0] != 0) << "Warning: nothing quantized yet, "
-                                         "portions should probably start with "
-                                         "0%%!";
-      max_quantum_exp_ =
-          floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
-    } else { // DNS model (max_value_quantized ==0 && update != 0)
-      max_quantum_exp_ =
-          floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
-    }
-  }
-*/
-
-  /*
-    if (portions[0] == 0) {
-      CHECK_EQ(updated, 0) << updated
-                           << " updated values while there should be none!";
-      max_quantum_exp_ =
-          floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
-    } else {
-      max_quantum_exp_ = round(log(max_value_quantized) / log(2.0));
-      int max_tobe_quantized_exp_ =
-          floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
-      CHECK_LE(max_tobe_quantized_exp_, max_quantum_exp_)
-          << "New quantum exp is greater than the one already got!";
-    }
-  */
   min_quantum_exp_ = max_quantum_exp_ - num_quantum_values + 1;
   std::cout << "Max_power = " << max_quantum_exp_ << std::endl;
   std::cout << "Min_power = " << min_quantum_exp_ << std::endl;
@@ -316,7 +278,7 @@ void INQInnerProductLayer<Dtype>::ComputeQuantumRange(
 }
 
 template <typename Dtype>
-void INQInnerProductLayer<Dtype>::ShapeIntoTwoPower(
+void INQInnerProductLayer<Dtype>::ShapeIntoTwoPower_cpu (
     Blob<Dtype> *input_blob, Blob<Dtype> *mask_blob,
     const vector<float> &portions, const int &max_quantum_exp_,
     const int &min_quantum_exp_) {
@@ -331,11 +293,11 @@ void INQInnerProductLayer<Dtype>::ShapeIntoTwoPower(
     LOG(INFO) << "All parameters already pruned away, skipping ...";
     return;
   }
-  // Get the number of quantized (updated) parameters
+  // parameter statistics
   Dtype *param = input_blob->mutable_cpu_data();
   Dtype *mask = mask_blob->mutable_cpu_data();
+  
   int count = input_blob->count();
-
   int num_not_yet_quantized = 0;
   vector<Dtype> sorted_param;
   for (int i = 0; i < count; ++i) {
@@ -363,8 +325,6 @@ void INQInnerProductLayer<Dtype>::ShapeIntoTwoPower(
             << num_tobe_update << "/" << num_not_tobe_quantized << "/"
             << num_not_yet_quantized;
 
-  // LOG(INFO) <<"to_update/not_yet_quantized/total:
-  // "<<num_tobe_update<<num_not_yet_quantized<<count;
   if (num_tobe_update > 0) {
     sort(sorted_param.begin(), sorted_param.end());
     Dtype threshold_ = sorted_param[num_not_tobe_quantized];
@@ -393,60 +353,7 @@ void INQInnerProductLayer<Dtype>::ShapeIntoTwoPower(
       }
     }
   }
-
-  /*
-    for (int i = 0; i < count; ++i) {
-      if (mask[i] == 0) {
-        updated++;
-      }
-    }
-    int left = count - updated;
-    // number of parameters that need to be updated
-    int update = floor(count * current_portion) - updated;
-    vector<Dtype> sort_param(left);
-    int k = 0;
-    // Start quantization
-    if (update > 0) {
-      // sort parameters according to absolute value
-      for (int i = 0; i < count; ++i) {
-        if (mask[i] == 1) {
-          sort_param[k++] = fabs(param[i]);
-        }
-      }
-      CHECK_EQ(k, left) << "Num of weights/bias that are not in 2 power form "
-                           "does NOT match the portion!";
-      sort(sort_param.begin(), sort_param.end());
-      // quantization threshold
-      Dtype threshold = sort_param[left - update];
-      // check and quantize each parameters
-      for (int i = 0; i < count; ++i) {
-        if (mask[i] == 1) {
-          if (param[i] >= threshold) {
-            // exp_ won't be larger than max_quantum_exp_, already checked in
-    the
-            // ComputeQuantumRange()
-            int exp_ = floor(log(4.0 * param[i] / 3.0) / log(2.0));
-            if (exp_ >= min_quantum_exp_) {
-              param[i] = pow(2.0, exp_);
-            } else {
-              param[i] = 0;
-            }
-            mask[i] = 0;
-          } else if (param[i] <= -threshold) {
-            int exp_ = floor(log(4.0 * (-param[i]) / 3.0) / log(2.0));
-            if (exp_ >= min_quantum_exp_) {
-              param[i] = -pow(2.0, exp_);
-            } else {
-              param[i] = 0;
-            }
-            mask[i] = 0;
-          }
-        }
-      }
-    }
-  */
-
-} // ShapeIntoTwoPower()
+} // ShapeIntoTwoPower_cpu()
 
 #ifdef CPU_ONLY
 STUB_GPU(INQInnerProductLayer);

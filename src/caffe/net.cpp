@@ -447,8 +447,12 @@ void Net<Dtype>::AppendParam(const NetParameter& param, const int layer_id,
       &layer_param.param(param_id) : &default_param_spec;
 
   /********** for neural network model compression **********/
-  bool is_inq_param_;
-  if (param.layer(layer_id).type() == "INQInnerProduct" || param.layer(layer_id).type() == "INQConvolution") {
+  bool is_inq_param_ = false;
+  if (param.layer(layer_id).type() == "INQInnerProduct" || 
+      param.layer(layer_id).type() == "INQConvolution") {
+    LOG(INFO) << "Found INQ layer:" << param.layer(layer_id).name() <<", " 
+              << "type: " <<param.layer(layer_id).type() <<", "
+              << "layer id:" << layer_id;
     is_inq_param_ = true;
   }
   /**********************************************************/      
@@ -781,8 +785,8 @@ void Net<Dtype>::CopyTrainedLayersFrom(const NetParameter& param) {
     /********** for neural network model compression **********/
     if (strcmp(layers_[target_layer_id]->type(),"DNSInnerProduct") == 0 || 
       strcmp(layers_[target_layer_id]->type(),"DNSConvolution" ) == 0 ||
-      strcmp(layers_[target_layer_id]->type(),"INQInnerPorduct") == 0 ||
-      strcmp(layers_[target_layer_id]->type(),"INQConvvolution") == 0 ) {
+      strcmp(layers_[target_layer_id]->type(),"INQInnerProduct") == 0 ||
+      strcmp(layers_[target_layer_id]->type(),"INQConvolution") == 0 ) {
       if(target_blobs.size() > source_layer.blobs_size()) {
         for (int j = 0; j < source_layer.blobs_size(); ++j) {
           if (!target_blobs[j]->ShapeEquals(source_layer.blobs(j))) {
@@ -802,7 +806,7 @@ void Net<Dtype>::CopyTrainedLayersFrom(const NetParameter& param) {
         }
         continue;
       }
-    }     
+    }
     /**********************************************************/
     
     CHECK_EQ(target_blobs.size(), source_layer.blobs_size())

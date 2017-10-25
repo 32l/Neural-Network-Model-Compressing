@@ -274,7 +274,8 @@ void INQConvolutionLayer<Dtype>::ShapeIntoTwoPower(
             << current_portion * 100 << "% ("
             << "total: " 
             << Dtype(count-num_not_yet_quantized)/count*100 << "% -> "
-            << Dtype(count-num_not_tobe_quantized)/count * 100 << ")";
+            << Dtype(count-num_not_tobe_quantized)/count*100<< "%"
+            << ")";
   LOG(INFO) << "init_not_quantized/total: "
             << num_init_not_quantized << "/" 
             << count;            

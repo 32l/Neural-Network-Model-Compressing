@@ -22,5 +22,5 @@ max_iter: 10000
 snapshot: 5000
 snapshot_prefix: "examples/mnist/inq_30"
 # solver mode: CPU or GPU
-solver_mode: CPU
+solver_mode: GPU
 

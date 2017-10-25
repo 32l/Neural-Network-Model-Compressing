@@ -268,6 +268,7 @@ void SGDSolver<Dtype>::ComputeUpdateValue(int param_id, Dtype rate) {
   }
   case Caffe::GPU: {
 #ifndef CPU_ONLY
+    // LOG(INFO) << "is_inq : " << is_inq_param_ ;
     if (!is_inq_param_) {
       // normal SGD update
       sgd_update_gpu(net_params[param_id]->count(),
@@ -277,12 +278,14 @@ void SGDSolver<Dtype>::ComputeUpdateValue(int param_id, Dtype rate) {
     } 
     /********** for neural network model compression **********/
     else {
+      LOG(INFO) <<"right before inq_sgd_update_gpu";
       inq_sgd_update_gpu(net_params[param_id]->count(),
                          // inq mask blob
                          net_params[param_id + blobs_to_skip]->gpu_data(),
                          net_params[param_id]->mutable_gpu_diff(),
                          history_[param_id]->mutable_gpu_data(), momentum,
                          local_rate);
+      LOG(INFO) <<"right after inq_sgd_update_gpu";
     }
     /**********************************************************/
 #else

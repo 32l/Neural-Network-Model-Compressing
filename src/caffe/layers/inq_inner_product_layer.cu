@@ -106,11 +106,9 @@ template <typename Dtype>
 void INQInnerProductLayer<Dtype>::Backward_gpu(
     const vector<Blob<Dtype> *> &top, const vector<bool> &propagate_down,
     const vector<Blob<Dtype> *> &bottom) {
-  LOG(INFO) << "Enter backward_gpu...";
   // Use the masked weight to propagate back
   const Dtype *top_diff = top[0]->gpu_diff();
   if (this->param_propagate_down_[0]) {
-    LOG(INFO) << "back the weights...";
     const Dtype *weightMask = this->blobs_[2]->gpu_data();
     Dtype *weight_diff = this->blobs_[0]->mutable_gpu_diff();
     const Dtype *bottom_data = bottom[0]->gpu_data();
@@ -132,7 +130,6 @@ void INQInnerProductLayer<Dtype>::Backward_gpu(
     }
   }
   if (bias_term_ && this->param_propagate_down_[1]) {
-    LOG(INFO) << "back the bias...";
     const Dtype *biasMask = this->blobs_[3]->gpu_data();
     Dtype *bias_diff = this->blobs_[1]->mutable_gpu_diff();
     // Gradient with respect to bias
@@ -145,7 +142,6 @@ void INQInnerProductLayer<Dtype>::Backward_gpu(
                           bias_multiplier_.gpu_data(), (Dtype)1., bias_diff);
   }
   if (propagate_down[0]) {
-    const Dtype *weightTmp = this->weight_tmp_.gpu_data();
     // Gradient with respect to bottom data
     if (transpose_) {
       caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasTrans, M_, K_, N_, (Dtype)1.,

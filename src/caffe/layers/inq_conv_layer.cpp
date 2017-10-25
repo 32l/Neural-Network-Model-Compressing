@@ -3,6 +3,7 @@
 #include "caffe/filler.hpp"
 #include "caffe/layers/inq_conv_layer.hpp"
 #include <cmath>
+#include <float.h>
 
 namespace caffe {
 template <typename Dtype>
@@ -193,7 +194,25 @@ void INQConvolutionLayer<Dtype>::ComputeQuantumRange(
       LOG(ERROR) << "Mask value must be either 0 or 1 !";
     }
   }
+  
 
+  if (fabs(max_value_quantized) <= FLT_EPSILON) { // DNS init model
+    CHECK_GT(updated, 0) << "max_value_quantized(" << max_value_quantized 
+                         << ") is not 0.0, but updated is 0!";
+    CHECK_GT(max_value_tobe_quantized, FLT_EPSILON) << "error wiht DNS raw model!";
+    max_quantum_exp_ = floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
+  } else if (max_value_quantized == INT_MIN) { // normal init model
+    CHECK_EQ(updated, 0) << "Normal init model, updated should be 0!";
+    CHECK_GT(max_value_tobe_quantized, FLT_EPSILON) << "error wiht normal init model!";
+    max_quantum_exp_ = floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
+  } else { // normal situation, both quantized and not quantized exist
+    CHECK_GT(max_value_tobe_quantized, FLT_EPSILON);
+    CHECK_GT(max_value_quantized, max_value_tobe_quantized);
+    max_quantum_exp_ = round(log(max_value_quantized) / log(2.0));
+  }
+    
+
+/*
   if (max_value_quantized != INT_MIN) {
     // normal situation
     CHECK_GT(updated, 0) << "max_value_quantized(" << max_value_quantized <<
@@ -216,7 +235,7 @@ void INQConvolutionLayer<Dtype>::ComputeQuantumRange(
           floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
     }
   }
-
+*/
   /*
     if (portions[0] == 0) {
       CHECK_EQ(updated, 0) << updated

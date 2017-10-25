@@ -3,6 +3,7 @@
 #include "caffe/filler.hpp"
 #include "caffe/layers/inq_inner_product_layer.hpp"
 #include <cmath>
+#include <float.h>
 
 namespace caffe {
 
@@ -123,30 +124,30 @@ void INQInnerProductLayer<Dtype>::Forward_cpu(
     if (this->iter_ == 0) {
       // Make the corresponding weights & bias into two power form.
       if (this->blobs_.size() == 4 && (this->bias_term_)) {
+        LOG(INFO) << this->type() << " Shaping the weights...";
         ComputeQuantumRange(this->blobs_[0].get(), this->blobs_[2].get(),
                             this->portions_, weight_quantum_values_,
                             num_weight_quantum_values_, max_weight_quantum_exp_,
                             min_weight_quantum_exp_);
-        std::cout << "Shaping the weights..." << std::endl;
         ShapeIntoTwoPower(this->blobs_[0].get(), this->blobs_[2].get(),
                           this->portions_, max_weight_quantum_exp_,
                           min_weight_quantum_exp_);
 
+        LOG(INFO) << this->type() << "Shaping the bias...";
         ComputeQuantumRange(this->blobs_[1].get(), this->blobs_[3].get(),
                             this->portions_, bias_quantum_values_,
                             num_bias_quantum_values_, max_bias_quantum_exp_,
                             min_bias_quantum_exp_);
-        std::cout << "Shaping the bias..." << std::endl;
         ShapeIntoTwoPower(this->blobs_[1].get(), this->blobs_[3].get(),
                           this->portions_, max_bias_quantum_exp_,
                           min_bias_quantum_exp_);
       } else if (this->blobs_.size() == 2 && (!this->bias_term_)) {
         LOG(INFO) << "ERROR: No bias terms found... but continue...";
+        std::cout << "Shaping ONLY the weights..." << std::endl;
         ComputeQuantumRange(this->blobs_[0].get(), this->blobs_[1].get(),
                             this->portions_, weight_quantum_values_,
                             num_weight_quantum_values_, max_weight_quantum_exp_,
                             min_weight_quantum_exp_);
-        std::cout << "Shaping ONLY the weights..." << std::endl;
         ShapeIntoTwoPower(this->blobs_[0].get(), this->blobs_[1].get(),
                           this->portions_, max_weight_quantum_exp_,
                           min_weight_quantum_exp_);
@@ -241,10 +242,32 @@ void INQInnerProductLayer<Dtype>::ComputeQuantumRange(
       }
       ++updated;
     } else {
-      LOG(ERROR) << "Mask value is not 0, nor 1, in tp_inner_product_layer";
+      LOG(ERROR) << "Mask value is not 0, nor 1";
     }
   }
 
+
+  if (fabs(max_value_quantized) <= FLT_EPSILON) { // DNS init model
+    CHECK_GT(updated, 0) << "max_value_quantized(" << max_value_quantized
+                         << ") is not 0.0, but updated is 0!";
+    if (max_value_tobe_quantized == INT_MIN){ // all pruned away already
+      max_quantum_exp_ = -100;  // set to a special number.
+    } else {
+      CHECK_GT(max_value_tobe_quantized, FLT_EPSILON) << "error wiht DNS raw model!";
+      max_quantum_exp_ = floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
+    }
+  } else if (max_value_quantized == INT_MIN) { // normal init model
+    CHECK_EQ(updated, 0) << "Normal init model, updated should be 0!";
+    CHECK_GT(max_value_tobe_quantized, FLT_EPSILON) << "error wiht normal init model!";
+    max_quantum_exp_ = floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
+  } else { // normal situation, both quantized and not quantized exist
+    CHECK_GT(max_value_tobe_quantized, FLT_EPSILON);
+    CHECK_GT(max_value_quantized, max_value_tobe_quantized);
+    max_quantum_exp_ = round(log(max_value_quantized) / log(2.0));
+  }
+
+
+/*
   if (max_value_quantized != INT_MIN) {
     // normal situation
     CHECK_GT(updated, 0) << "max_value_quantized is not 0.0, but updated is "
@@ -266,6 +289,8 @@ void INQInnerProductLayer<Dtype>::ComputeQuantumRange(
           floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
     }
   }
+*/
+
   /*
     if (portions[0] == 0) {
       CHECK_EQ(updated, 0) << updated
@@ -299,6 +324,11 @@ void INQInnerProductLayer<Dtype>::ShapeIntoTwoPower(
   const float previous_portion = portions[0];
   const float current_portion = portions[1];
   if (current_portion == 0) {
+    LOG(INFO) << "Current portion equals 0.0%, skipping ...";
+    return;
+  }
+  if ( max_quantum_exp_ == -100) {
+    LOG(INFO) << "All parameters already pruned away, skipping ...";
     return;
   }
   // Get the number of quantized (updated) parameters

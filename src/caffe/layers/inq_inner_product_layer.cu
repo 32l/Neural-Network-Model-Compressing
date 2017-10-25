@@ -56,7 +56,7 @@ void INQInnerProductLayer<Dtype>::Forward_gpu(
     if (this->iter_ == 0) {
       // Make the corresponding weights & bias into two power form.
       if (this->blobs_.size() == 4 && (this->bias_term_)) {
-        LOG(INFO) << "Shaping the weights in tp_inner...[gpu]";
+        LOG(INFO) << "Shaping the weights...";
         ComputeQuantumRange(this->blobs_[0].get(), this->blobs_[2].get(),
                             this->portions_, weight_quantum_values_,
                             num_weight_quantum_values_, max_weight_quantum_exp_,
@@ -64,7 +64,7 @@ void INQInnerProductLayer<Dtype>::Forward_gpu(
         ShapeIntoTwoPower(this->blobs_[0].get(), this->blobs_[2].get(),
                           this->portions_, max_weight_quantum_exp_,
                           min_weight_quantum_exp_);
-        LOG(INFO) << "Shaping the bias in tp_inner...[gpu]";
+        LOG(INFO) << "Shaping the bias...";
         ComputeQuantumRange(this->blobs_[1].get(), this->blobs_[3].get(),
                             this->portions_, bias_quantum_values_,
                             num_bias_quantum_values_, max_bias_quantum_exp_,
@@ -72,10 +72,10 @@ void INQInnerProductLayer<Dtype>::Forward_gpu(
         ShapeIntoTwoPower(this->blobs_[1].get(), this->blobs_[3].get(),
                           this->portions_, max_bias_quantum_exp_,
                           min_bias_quantum_exp_);
-        LOG(INFO) << "Shaping done in tp_inner...[gpu]";
+        LOG(INFO) << "Shaping done in INQ inner_product_layer";
       } else if (this->blobs_.size() == 2 && (!this->bias_term_)) {
-        LOG(INFO) << "ERROR: No bias terms found... but continue...";
-        std::cout << "Shaping ONLY the weights...[gpu]" << std::endl;
+        LOG(INFO) << "Warning: No bias terms found... but continue...";
+        LOG(INFO) << "Shaping ONLY the weights...";
         ComputeQuantumRange(this->blobs_[0].get(), this->blobs_[1].get(),
                             this->portions_, weight_quantum_values_,
                             num_weight_quantum_values_, max_weight_quantum_exp_,
@@ -111,9 +111,11 @@ template <typename Dtype>
 void INQInnerProductLayer<Dtype>::Backward_gpu(
     const vector<Blob<Dtype> *> &top, const vector<bool> &propagate_down,
     const vector<Blob<Dtype> *> &bottom) {
+  LOG(INFO) << "Enter backward_gpu...";
   // Use the masked weight to propagate back
   const Dtype *top_diff = top[0]->gpu_diff();
   if (this->param_propagate_down_[0]) {
+    LOG(INFO) << "back the weights...";
     const Dtype *weightMask = this->blobs_[2]->gpu_data();
     Dtype *weight_diff = this->blobs_[0]->mutable_gpu_diff();
     const Dtype *bottom_data = bottom[0]->gpu_data();
@@ -125,6 +127,7 @@ void INQInnerProductLayer<Dtype>::Backward_gpu(
                           top_diff, bottom_data, (Dtype)1., weight_diff);
   }
   if (bias_term_ && this->param_propagate_down_[1]) {
+    LOG(INFO) << "back the bias...";
     const Dtype *biasMask = this->blobs_[3]->gpu_data();
     Dtype *bias_diff = this->blobs_[1]->mutable_gpu_diff();
     // Gradient with respect to bias

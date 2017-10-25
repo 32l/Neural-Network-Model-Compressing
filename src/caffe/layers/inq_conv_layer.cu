@@ -8,8 +8,7 @@ namespace caffe {
 
 template <typename Dtype>
 __global__ void TPCalc(const int n, Dtype *param, Dtype *mask,
-                       const Dtype threshold_,
-                       const int max_quantum_exp_,
+                       const Dtype threshold_, const int max_quantum_exp_,
                        const int min_quantum_exp_) {
   CUDA_KERNEL_LOOP(i, n) {
     if (mask[i] == 1) {
@@ -19,24 +18,27 @@ __global__ void TPCalc(const int n, Dtype *param, Dtype *mask,
         // CHECK_LE(exp_, max_quantum_exp_) ;
         if (exp_ >= min_quantum_exp_) {
           param[i] = pow(2.0, exp_);
-        }
-        else {
+        } else {
           param[i] = 0;
         }
         mask[i] = 0;
-      }
-      else if (param[i] <= -threshold_) {
+      } else if (param[i] <= -threshold_) {
         int exp_ = floor(log(4.0 * (-param[i]) / 3.0) / log(2.0));
         if (exp_ >= min_quantum_exp_) {
           param[i] = -pow(2.0, exp_);
-        }
-        else {
+        } else {
           param[i] = 0;
         }
         mask[i] = 0;
       }
     }
   }
+}
+
+template <typename Dtype>
+__global__ void CCMaskApply(const int n, const Dtype *wb, const Dtype *mask,
+                            Dtype *wb_t) {
+  CUDA_KERNEL_LOOP(index, n) { wb_t[index] = wb[index] * mask[index]; }
 }
 
 template <typename Dtype>
@@ -96,7 +98,6 @@ void INQConvolutionLayer<Dtype>::Forward_gpu(
       }
     }
   }
-  // std::cout << "Forward done in tp_conv...[gpu]" << std::endl;
 }
 
 template <typename Dtype>
@@ -113,10 +114,12 @@ void INQConvolutionLayer<Dtype>::Backward_gpu(
     if (this->bias_term_ && this->param_propagate_down_[1]) {
       const Dtype *biasMask = this->blobs_[3]->gpu_data();
       Dtype *bias_diff = this->blobs_[1]->mutable_gpu_diff();
-      for (unsigned int k = 0; k < this->blobs_[1]->count(); ++k)
-      {
-          bias_diff[k] = bias_diff[k] * biasMask[k];
-      }
+
+      CCMaskApply<Dtype><<<CAFFE_GET_BLOCKS(this->blobs_[3]->count()),
+                           CAFFE_CUDA_NUM_THREADS>>>(
+          this->blobs_[3]->count(), bias_diff, biasMask, bias_diff);
+      CUDA_POST_KERNEL_CHECK;
+
       for (int n = 0; n < this->num_; ++n) {
         this->backward_gpu_bias(bias_diff, top_diff + top[i]->offset(n));
       }
@@ -125,10 +128,11 @@ void INQConvolutionLayer<Dtype>::Backward_gpu(
     if (this->param_propagate_down_[0] || propagate_down[i]) {
       const Dtype *bottom_data = bottom[i]->gpu_data();
       Dtype *bottom_diff = bottom[i]->mutable_gpu_diff();
-      for (unsigned int k = 0; k < this->blobs_[0]->count(); ++k)
-      {
-          weight_diff[k] = weight_diff[k] * weightMask[k];
-      }
+
+      CCMaskApply<Dtype><<<CAFFE_GET_BLOCKS(this->blobs_[2]->count()),
+                           CAFFE_CUDA_NUM_THREADS>>>(
+          this->blobs_[2]->count(), weight_diff, weightMask, weight_diff);
+      CUDA_POST_KERNEL_CHECK;
       for (int n = 0; n < this->num_; ++n) {
         // gradient w.r.t. weight. Note that we will accumulate diffs.
         if (this->param_propagate_down_[0]) {
@@ -152,7 +156,7 @@ void INQConvolutionLayer<Dtype>::ComputeQuantumRange(
     const vector<float> portions, vector<Dtype> &quantum_values,
     const int &num_quantum_values, int &max_quantum_exp_,
     int &min_quantum_exp_) {
-      
+
   quantum_values.resize(2 * num_quantum_values + 1);
   const Dtype *values = blob->cpu_data();
   const Dtype *mask = blob_mask->cpu_data();
@@ -165,14 +169,12 @@ void INQConvolutionLayer<Dtype>::ComputeQuantumRange(
       if (fabs(values[k]) > max_value_tobe_quantized) {
         max_value_tobe_quantized = fabs(values[k]);
       }
-    }
-    else if (mask[k] == 0) {
+    } else if (mask[k] == 0) {
       if (fabs(values[k]) > max_value_quantized) {
         max_value_quantized = fabs(values[k]);
       }
       ++updated;
-    }
-    else {
+    } else {
       LOG(ERROR) << "Mask value is not 0, nor 1, in tp_inner_product_layer";
     }
   }
@@ -189,8 +191,8 @@ void INQConvolutionLayer<Dtype>::ComputeQuantumRange(
     if (updated == 0) {
       // normal situation (nothing quantized yet)
       LOG_IF(INFO, portions_[0] != 0) << "Warning: nothing quantized yet, "
-                                       "portion should probably start with "
-                                       "0%%!";
+                                         "portion should probably start with "
+                                         "0%%!";
       max_quantum_exp_ =
           floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
     } else { // DNS model (max_value_quantized ==0 && update != 0)
@@ -199,21 +201,21 @@ void INQConvolutionLayer<Dtype>::ComputeQuantumRange(
     }
   }
 
-/*
-  if (portions[0] == 0) {
-    CHECK_EQ(updated, 0) << updated
-                         << " updated values while there should be none!";
-    max_quantum_exp_ =
-        floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
-  }
-  else {
-    max_quantum_exp_ = round(log(max_value_quantized) / log(2.0));
-    int max_tobe_quantized_exp_ =
-        floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
-    CHECK_LE(max_tobe_quantized_exp_, max_quantum_exp_)
-        << "New quantum exp is greater than the one already got!";
-  }
-*/
+  /*
+    if (portions[0] == 0) {
+      CHECK_EQ(updated, 0) << updated
+                           << " updated values while there should be none!";
+      max_quantum_exp_ =
+          floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
+    }
+    else {
+      max_quantum_exp_ = round(log(max_value_quantized) / log(2.0));
+      int max_tobe_quantized_exp_ =
+          floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
+      CHECK_LE(max_tobe_quantized_exp_, max_quantum_exp_)
+          << "New quantum exp is greater than the one already got!";
+    }
+  */
   min_quantum_exp_ = max_quantum_exp_ - num_quantum_values + 1;
   std::cout << "Max_power = " << max_quantum_exp_ << std::endl;
   std::cout << "Min_power = " << min_quantum_exp_ << std::endl;
@@ -223,7 +225,6 @@ void INQConvolutionLayer<Dtype>::ComputeQuantumRange(
   }
   quantum_values[num_quantum_values] = 0;
 }
-
 
 template <typename Dtype>
 void INQConvolutionLayer<Dtype>::ShapeIntoTwoPower(
@@ -247,51 +248,52 @@ void INQConvolutionLayer<Dtype>::ShapeIntoTwoPower(
     }
   }
   // just an estimation
-  int num_init_not_quantized = round(Dtype( num_not_yet_quantized)/(1.0 - previous_portion ));
-  int num_not_tobe_quantized = num_init_not_quantized*(1.0-current_portion);
+  int num_init_not_quantized =
+      round(Dtype(num_not_yet_quantized) / (1.0 - previous_portion));
+  int num_not_tobe_quantized = num_init_not_quantized * (1.0 - current_portion);
   int num_tobe_update = num_not_yet_quantized - num_not_tobe_quantized;
-  
-  if(num_tobe_update > 0){
-    sort(sorted_param.begin(), sorted_param.end() );
+
+  if (num_tobe_update > 0) {
+    sort(sorted_param.begin(), sorted_param.end());
     Dtype threshold_ = sorted_param[num_not_tobe_quantized];
-    TPCalc<Dtype><<<CAFFE_GET_BLOCKS(count), CAFFE_CUDA_NUM_THREADS>>>(count, param, mask, threshold_, max_quantum_exp_, min_quantum_exp_);
+    TPCalc<Dtype><<<CAFFE_GET_BLOCKS(count), CAFFE_CUDA_NUM_THREADS>>>(
+        count, param, mask, threshold_, max_quantum_exp_, min_quantum_exp_);
     CUDA_POST_KERNEL_CHECK;
 
     LOG(INFO) << "Shaping finished in INQ_conv... [gpu]";
   }
-/*
-    for (int i = 0; i < count; ++i) {
-      if (mask[i] == 1) {
-        if (param[i] >= threshold_) {
-          // exp_ won't be larger than max_quantum_exp_, already checked in the
-          // ComputeQuantumRange()
-          int exp_ = floor(log(4.0 * param[i] / 3.0) / log(2.0));
-          // CHECK_LE(exp_, max_quantum_exp_) ;
-          if (exp_ >= min_quantum_exp_) {
-            param[i] = pow(2.0, exp_);
+  /*
+      for (int i = 0; i < count; ++i) {
+        if (mask[i] == 1) {
+          if (param[i] >= threshold_) {
+            // exp_ won't be larger than max_quantum_exp_, already checked in
+     the
+            // ComputeQuantumRange()
+            int exp_ = floor(log(4.0 * param[i] / 3.0) / log(2.0));
+            // CHECK_LE(exp_, max_quantum_exp_) ;
+            if (exp_ >= min_quantum_exp_) {
+              param[i] = pow(2.0, exp_);
+            }
+            else {
+              param[i] = 0;
+            }
+            mask[i] = 0;
           }
-          else {
-            param[i] = 0;
+          else if (param[i] <= -threshold_) {
+            int exp_ = floor(log(4.0 * (-param[i]) / 3.0) / log(2.0));
+            if (exp_ >= min_quantum_exp_) {
+              param[i] = -pow(2.0, exp_);
+            }
+            else {
+              param[i] = 0;
+            }
+            mask[i] = 0;
           }
-          mask[i] = 0;
-        }
-        else if (param[i] <= -threshold_) {
-          int exp_ = floor(log(4.0 * (-param[i]) / 3.0) / log(2.0));
-          if (exp_ >= min_quantum_exp_) {
-            param[i] = -pow(2.0, exp_);
-          }
-          else {
-            param[i] = 0;
-          }
-          mask[i] = 0;
         }
       }
-    }
-*/
-
+  */
 }
 
 INSTANTIATE_LAYER_GPU_FUNCS(INQConvolutionLayer);
 
 } // namespace caffe
-

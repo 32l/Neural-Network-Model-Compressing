@@ -26,26 +26,20 @@ __global__ void TPCalc(const int n, Dtype *param, Dtype *mask,
       } else if (param[i] <= -threshold_) {
         int exp_ = floor(log2(4.0 * (-param[i]) / 3.0));
         if (exp_ >= min_quantum_exp_) {
-          param[i] = -exp(Dtype(exp_));
+          param[i] = -exp2(Dtype(exp_));
         } else {
           param[i] = 0;
         }
         mask[i] = 0;
       }
-      /*
-            if (param[i] >= threshold) {
-              param[i] = exp2(floor(log2(4.0 * param[i] / 3.0)));
-              // param[i] = pow(2.0, floor(log(4.0 * param[i] / 3.0) / log(2.0))
-         ); mask[i] = 0; } else if (param[i] <= -threshold) { param[i] =
-         -exp2(floor(log2(4.0 * (-param[i]) / 3.0)));
-              // param[i] = -pow(2.0, floor(log(4.0 * (-param[i]) / 3.0) /
-         log(2.0))
-              // );
-              mask[i] = 0;
-            }
-      */
     }
   }
+}
+
+template <typename Dtype>
+__global__ void CCMaskApply(const int n, const Dtype *wb, const Dtype *mask,
+                            Dtype *wb_t) {
+  CUDA_KERNEL_LOOP(index, n) { wb_t[index] = wb[index] * mask[index]; }
 }
 
 template <typename Dtype>
@@ -98,8 +92,9 @@ void INQInnerProductLayer<Dtype>::Forward_gpu(
       caffe_gpu_axpy<Dtype>(N_, bias_multiplier_.gpu_data()[0],
                             this->blobs_[1]->gpu_data(), top_data);
   } else {
-    caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasTrans, M_, N_, K_, (Dtype)1.,
-                          bottom_data, weight, (Dtype)0., top_data);
+    caffe_gpu_gemm<Dtype>(CblasNoTrans, transpose_ ? CblasNoTrans : CblasTrans,
+                          M_, N_, K_, (Dtype)1., bottom_data, weight, (Dtype)0.,
+                          top_data);
     if (bias_term_)
       caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, M_, N_, 1, (Dtype)1.,
                             bias_multiplier_.gpu_data(),
@@ -120,30 +115,58 @@ void INQInnerProductLayer<Dtype>::Backward_gpu(
     Dtype *weight_diff = this->blobs_[0]->mutable_gpu_diff();
     const Dtype *bottom_data = bottom[0]->gpu_data();
     // Gradient with respect to weight
-    for (unsigned int k = 0; k < this->blobs_[0]->count(); ++k) {
-      weight_diff[k] = weight_diff[k] * weightMask[k];
+
+    CCMaskApply<Dtype><<<CAFFE_GET_BLOCKS(this->blobs_[2]->count()),
+                         CAFFE_CUDA_NUM_THREADS>>>(
+        this->blobs_[2]->count(), weight_diff, weightMask, weight_diff);
+    CUDA_POST_KERNEL_CHECK;
+
+    if (transpose_) {
+      caffe_gpu_gemm<Dtype>(CblasTrans, CblasNoTrans, K_, N_, M_, (Dtype)1.,
+                            bottom_data, top_diff, (Dtype)1.,
+                            this->blobs_[0]->mutable_gpu_diff());
+    } else {
+      caffe_gpu_gemm<Dtype>(CblasTrans, CblasNoTrans, N_, K_, M_, (Dtype)1.,
+                            top_diff, bottom_data, (Dtype)1.,
+                            this->blobs_[0]->mutable_gpu_diff());
     }
-    caffe_gpu_gemm<Dtype>(CblasTrans, CblasNoTrans, N_, K_, M_, (Dtype)1.,
-                          top_diff, bottom_data, (Dtype)1., weight_diff);
   }
   if (bias_term_ && this->param_propagate_down_[1]) {
     LOG(INFO) << "back the bias...";
     const Dtype *biasMask = this->blobs_[3]->gpu_data();
     Dtype *bias_diff = this->blobs_[1]->mutable_gpu_diff();
     // Gradient with respect to bias
-    for (unsigned int k = 0; k < this->blobs_[1]->count(); ++k) {
-      bias_diff[k] = bias_diff[k] * biasMask[k];
-    }
+
+    CCMaskApply<Dtype><<<CAFFE_GET_BLOCKS(this->blobs_[3]->count()),
+                         CAFFE_CUDA_NUM_THREADS>>>(
+        this->blobs_[3]->count(), bias_diff, biasMask, bias_diff);
+    CUDA_POST_KERNEL_CHECK;
     caffe_gpu_gemv<Dtype>(CblasTrans, M_, N_, (Dtype)1., top_diff,
                           bias_multiplier_.gpu_data(), (Dtype)1., bias_diff);
   }
   if (propagate_down[0]) {
-    // const	Dtype *weightTmp = this->weight_tmp_.cpu_data();
+    const Dtype *weightTmp = this->weight_tmp_.gpu_data();
     // Gradient with respect to bottom data
-    caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, M_, K_, N_, (Dtype)1.,
-                          top_diff, this->blobs_[0]->gpu_data(), (Dtype)0.,
-                          bottom[0]->mutable_gpu_diff());
+    if (transpose_) {
+      caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasTrans, M_, K_, N_, (Dtype)1.,
+                            top_diff, this->blobs_[0]->gpu_data(), (Dtype)0.,
+                            bottom[0]->mutable_gpu_diff());
+    } else {
+      caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, M_, K_, N_, (Dtype)1.,
+                            top_diff, this->blobs_[0]->gpu_data(), (Dtype)0.,
+                            bottom[0]->mutable_gpu_diff());
+    }
   }
+
+  /*
+    if (propagate_down[0]) {
+      // const	Dtype *weightTmp = this->weight_tmp_.cpu_data();
+      // Gradient with respect to bottom data
+      caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, M_, K_, N_, (Dtype)1.,
+                            top_diff, this->blobs_[0]->gpu_data(), (Dtype)0.,
+                            bottom[0]->mutable_gpu_diff());
+    }
+  */
 }
 
 template <typename Dtype>
@@ -187,8 +210,8 @@ void INQInnerProductLayer<Dtype>::ComputeQuantumRange(
     if (updated == 0) {
       // normal situation (nothing quantized yet)
       LOG_IF(INFO, portions_[0] != 0) << "Warning: nothing quantized yet, "
-                                       "portion should probably start with "
-                                       "0%%!";
+                                         "portion should probably start with "
+                                         "0%%!";
       max_quantum_exp_ =
           floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
     } else { // DNS model (max_value_quantized ==0 && update != 0)

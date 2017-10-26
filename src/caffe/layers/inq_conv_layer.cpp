@@ -73,7 +73,7 @@ void INQConvolutionLayer<Dtype>::Forward_cpu(
     if (this->iter_ == 0) {
       // Make the corresponding weights & bias into two power form.
       if (this->blobs_.size() == 4 && (this->bias_term_)) {
-        LOG(INFO) << this->type() << " Shaping the weights...";
+        LOG_IF(INFO, Caffe::root_solver()) << this->type() << " Shaping the weights...";
         ComputeQuantumRange(this->blobs_[0].get(), this->blobs_[2].get(),
                             this->portions_, weight_quantum_values_,
                             num_weight_quantum_values_, max_weight_quantum_exp_,
@@ -81,7 +81,7 @@ void INQConvolutionLayer<Dtype>::Forward_cpu(
         ShapeIntoTwoPower_cpu(this->blobs_[0].get(), this->blobs_[2].get(),
                           this->portions_, max_weight_quantum_exp_,
                           min_weight_quantum_exp_);
-        LOG(INFO) << this->type() << " Shaping the bias...";
+        LOG_IF(INFO, Caffe::root_solver()) << this->type() << " Shaping the bias...";
         ComputeQuantumRange(this->blobs_[1].get(), this->blobs_[3].get(),
                             this->portions_, bias_quantum_values_,
                             num_bias_quantum_values_, max_bias_quantum_exp_,
@@ -90,8 +90,8 @@ void INQConvolutionLayer<Dtype>::Forward_cpu(
                           this->portions_, max_bias_quantum_exp_,
                           min_bias_quantum_exp_);
       } else if (this->blobs_.size() == 2 && (!this->bias_term_)) {
-        LOG(INFO) << "ERROR: No bias terms found... but continue...";
-        LOG(INFO) << this->type() << " Shaping the weights...";
+        LOG_IF(INFO, Caffe::root_solver()) << "ERROR: No bias terms found... but continue...";
+        LOG_IF(INFO, Caffe::root_solver()) << this->type() << " Shaping the weights...";
         ComputeQuantumRange(this->blobs_[0].get(), this->blobs_[1].get(),
                             this->portions_, weight_quantum_values_,
                             num_weight_quantum_values_, max_weight_quantum_exp_,
@@ -255,8 +255,8 @@ void INQConvolutionLayer<Dtype>::ComputeQuantumRange(
     }
   */
   min_quantum_exp_ = max_quantum_exp_ - num_quantum_values + 1;
-  std::cout << "Max_power = " << max_quantum_exp_ << std::endl;
-  std::cout << "Min_power = " << min_quantum_exp_ << std::endl;
+  LOG_IF(INFO, Caffe::root_solver()) << "Max_power = " << max_quantum_exp_ ;
+  LOG_IF(INFO, Caffe::root_solver()) << "Min_power = " << min_quantum_exp_ ;
   for (unsigned int k = 0; k < num_quantum_values; ++k) {
     quantum_values[k] = pow(2.0, max_quantum_exp_ - k);
     quantum_values[2 * num_quantum_values - k] = -quantum_values[k];
@@ -272,11 +272,11 @@ void INQConvolutionLayer<Dtype>::ShapeIntoTwoPower_cpu(
   const float previous_portion = portions[0];
   const float current_portion = portions[1];
   if (current_portion == 0) {
-    LOG(INFO) << "Current portion equals 0.0%, skipping ...";
+    LOG_IF(INFO, Caffe::root_solver()) << "Current portion equals 0.0%, skipping ...";
     return;
   }
   if ( max_quantum_exp_ == -100) {
-    LOG(INFO) << "All parameters already pruned away, skipping ...";
+    LOG_IF(INFO, Caffe::root_solver()) << "All parameters already pruned away, skipping ...";
     return;
   }
   // parameter statistics
@@ -299,16 +299,16 @@ void INQConvolutionLayer<Dtype>::ShapeIntoTwoPower_cpu(
       round(num_init_not_quantized * (1.0 - current_portion));
   int num_tobe_update = num_not_yet_quantized - num_not_tobe_quantized;
 
-  LOG(INFO) << "portions: " << previous_portion * 100 <<"% -> "
+  LOG_IF(INFO, Caffe::root_solver()) << "portions: " << previous_portion * 100 <<"% -> "
             << current_portion * 100 << "% ("
             << "total: " 
             << Dtype(count-num_not_yet_quantized)/count*100 << "% -> "
             << Dtype(count-num_not_tobe_quantized)/count*100<< "%"
             << ")";
-  LOG(INFO) << "init_not_quantized/total: "
+  LOG_IF(INFO, Caffe::root_solver()) << "init_not_quantized/total: "
             << num_init_not_quantized << "/" 
             << count;            
-  LOG(INFO) << "to_update/not_tobe_quantized/not_yet_quantized: " 
+  LOG_IF(INFO, Caffe::root_solver()) << "to_update/not_tobe_quantized/not_yet_quantized: " 
             << num_tobe_update << "/"
             << num_not_tobe_quantized << "/"
             << num_not_yet_quantized ;

@@ -53,11 +53,13 @@ protected:
                                  const vector<float> &portions,
                                  const int &max_quantum_exp_,
                                  const int &min_quantum_exp_);
+/*
   virtual void ShapeIntoTwoPower_gpu(Blob<Dtype> *input_blob,
                                   Blob<Dtype> *mask_blob,
                                   const vector<float> &portions,
                                   const int &max_quantum_exp_,
                                   const int &min_quantum_exp_);
+*/
   vector<float> portions_;
   int num_portions_;
   int num_weight_quantum_values_;

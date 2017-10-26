@@ -42,6 +42,72 @@ __global__ void CCMaskApply(const int n, const Dtype *wb, const Dtype *mask,
   CUDA_KERNEL_LOOP(index, n) { wb_t[index] = wb[index] * mask[index]; }
 }
 
+/*
+template <typename Dtype>
+void INQInnerProductLayer<Dtype>::ShapeIntoTwoPower_gpu(
+    Blob<Dtype> *input_blob, Blob<Dtype> *mask_blob,
+    const vector<float> &portions, const int &max_quantum_exp_,
+    const int &min_quantum_exp_) {
+  const float previous_portion = portions[0];
+  const float current_portion = portions[1];
+
+  if (current_portion == 0) {
+    LOG_IF(INFO, Caffe::root_solver()) << "Current portion equals 0.0%, skipping ...";
+    return;
+  }
+  if ( max_quantum_exp_ == -100) {
+    LOG_IF(INFO, Caffe::root_solver()) << "All parameters already pruned away, skipping ...";
+    return;
+  }
+  // parameter statistics
+  const Dtype *param_cpu = input_blob->cpu_data();
+  Dtype *param = input_blob->mutable_gpu_data();
+  Dtype *mask = mask_blob->mutable_gpu_data();
+
+  int count = input_blob->count();
+  int num_not_yet_quantized = 0;
+  vector<Dtype> sorted_param;
+  for (int i = 0; i < count; ++i) {
+    if (mask[i] == 1) {
+      ++num_not_yet_quantized;
+      sorted_param.push_back(fabs(param_cpu[i]));
+    }
+  }
+  // just an estimation
+  int num_init_not_quantized =
+    round(Dtype(num_not_yet_quantized) / (1.0 - previous_portion));
+  int num_not_tobe_quantized =
+    round(num_init_not_quantized * (1.0 - current_portion));
+  int num_tobe_update = num_not_yet_quantized - num_not_tobe_quantized;
+
+  LOG_IF(INFO, Caffe::root_solver()) << "portions: " << previous_portion * 100 << "% -> "
+          << current_portion * 100 << "% ("
+          << "total: " << Dtype(count - num_not_yet_quantized) / count * 100
+          << "% -> " << Dtype(count - num_not_tobe_quantized) / count * 100
+          << "%"
+          << ")";
+  LOG_IF(INFO, Caffe::root_solver()) << "init_not_quantized/total: " << num_init_not_quantized << "/"
+          << count;
+  LOG_IF(INFO, Caffe::root_solver()) << "to_update/not_tobe_quantized/not_yet_quantized: "
+          << num_tobe_update << "/" << num_not_tobe_quantized << "/"
+          << num_not_yet_quantized;
+
+  // int num_init_not_quantized =
+  //     round(Dtype(num_not_yet_quantized) / (1.0 - previous_portion));
+  // int num_not_tobe_quantized = num_init_not_quantized * (1.0 - current_portion);
+  // int num_tobe_update = num_not_yet_quantized - num_not_tobe_quantized;
+
+  if (num_tobe_update > 0) {
+    sort(sorted_param.begin(), sorted_param.end());
+    Dtype threshold_ = sorted_param[num_not_tobe_quantized];
+    TPCalc<Dtype><<<CAFFE_GET_BLOCKS(count), CAFFE_CUDA_NUM_THREADS>>>(
+        count, param, mask, threshold_, max_quantum_exp_, min_quantum_exp_);
+    CUDA_POST_KERNEL_CHECK;
+  }
+
+} // ShapeIntoTwoPower_gpu
+*/
+
 template <typename Dtype>
 void INQInnerProductLayer<Dtype>::Forward_gpu(
     const vector<Blob<Dtype> *> &bottom, const vector<Blob<Dtype> *> &top) {
@@ -50,31 +116,31 @@ void INQInnerProductLayer<Dtype>::Forward_gpu(
     if (this->iter_ == 0) {
       // Make the corresponding weights & bias into two power form.
       if (this->blobs_.size() == 4 && (this->bias_term_)) {
-        LOG(INFO) << this->type() << " Shaping the weights...";
+        LOG_IF(INFO, Caffe::root_solver()) << this->type() << " Shaping the weights...";
         ComputeQuantumRange(this->blobs_[0].get(), this->blobs_[2].get(),
                             this->portions_, weight_quantum_values_,
                             num_weight_quantum_values_, max_weight_quantum_exp_,
                             min_weight_quantum_exp_);
-        ShapeIntoTwoPower_gpu(this->blobs_[0].get(), this->blobs_[2].get(),
+        ShapeIntoTwoPower_cpu(this->blobs_[0].get(), this->blobs_[2].get(),
                           this->portions_, max_weight_quantum_exp_,
                           min_weight_quantum_exp_);
 
-        LOG(INFO) << this->type() << " Shaping the bias...";
+        LOG_IF(INFO, Caffe::root_solver()) << this->type() << " Shaping the bias...";
         ComputeQuantumRange(this->blobs_[1].get(), this->blobs_[3].get(),
                             this->portions_, bias_quantum_values_,
                             num_bias_quantum_values_, max_bias_quantum_exp_,
                             min_bias_quantum_exp_);
-        ShapeIntoTwoPower_gpu(this->blobs_[1].get(), this->blobs_[3].get(),
+        ShapeIntoTwoPower_cpu(this->blobs_[1].get(), this->blobs_[3].get(),
                           this->portions_, max_bias_quantum_exp_,
                           min_bias_quantum_exp_);
       } else if (this->blobs_.size() == 2 && (!this->bias_term_)) {
-        LOG(INFO) << "ERROR: No bias terms found... but continue...";
-        LOG(INFO) << this->type() << " Shaping the weights...";
+        LOG_IF(INFO, Caffe::root_solver()) << "ERROR: No bias terms found... but continue...";
+        LOG_IF(INFO, Caffe::root_solver()) << this->type() << " Shaping the weights...";
         ComputeQuantumRange(this->blobs_[0].get(), this->blobs_[1].get(),
                             this->portions_, weight_quantum_values_,
                             num_weight_quantum_values_, max_weight_quantum_exp_,
                             min_weight_quantum_exp_);
-        ShapeIntoTwoPower_gpu(this->blobs_[0].get(), this->blobs_[1].get(),
+        ShapeIntoTwoPower_cpu(this->blobs_[0].get(), this->blobs_[1].get(),
                           this->portions_, max_weight_quantum_exp_,
                           min_weight_quantum_exp_);
       }
@@ -233,6 +299,7 @@ void INQInnerProductLayer<Dtype>::ComputeQuantumRange(
 }
 */
 
+/*
 template <typename Dtype>
 void INQInnerProductLayer<Dtype>::ShapeIntoTwoPower_gpu(
     Blob<Dtype> *input_blob, Blob<Dtype> *mask_blob,
@@ -242,14 +309,15 @@ void INQInnerProductLayer<Dtype>::ShapeIntoTwoPower_gpu(
   const float current_portion = portions[1];
 
   if (current_portion == 0) {
-    LOG(INFO) << "Current portion equals 0.0%, skipping ...";
+    LOG_IF(INFO, Caffe::root_solver()) << "Current portion equals 0.0%, skipping ...";
     return;
   }
   if ( max_quantum_exp_ == -100) {
-    LOG(INFO) << "All parameters already pruned away, skipping ...";
+    LOG_IF(INFO, Caffe::root_solver()) << "All parameters already pruned away, skipping ...";
     return;
   }
   // parameter statistics
+  const Dtype *param_cpu = input_blob->cpu_data();
   Dtype *param = input_blob->mutable_gpu_data();
   Dtype *mask = mask_blob->mutable_gpu_data();
 
@@ -259,7 +327,7 @@ void INQInnerProductLayer<Dtype>::ShapeIntoTwoPower_gpu(
   for (int i = 0; i < count; ++i) {
     if (mask[i] == 1) {
       ++num_not_yet_quantized;
-      sorted_param.push_back(fabs(param[i]));
+      sorted_param.push_back(fabs(param_cpu[i]));
     }
   }
   // just an estimation
@@ -269,15 +337,15 @@ void INQInnerProductLayer<Dtype>::ShapeIntoTwoPower_gpu(
     round(num_init_not_quantized * (1.0 - current_portion));
   int num_tobe_update = num_not_yet_quantized - num_not_tobe_quantized;
 
-  LOG(INFO) << "portions: " << previous_portion * 100 << "% -> "
+  LOG_IF(INFO, Caffe::root_solver()) << "portions: " << previous_portion * 100 << "% -> "
           << current_portion * 100 << "% ("
           << "total: " << Dtype(count - num_not_yet_quantized) / count * 100
           << "% -> " << Dtype(count - num_not_tobe_quantized) / count * 100
           << "%"
           << ")";
-  LOG(INFO) << "init_not_quantized/total: " << num_init_not_quantized << "/"
+  LOG_IF(INFO, Caffe::root_solver()) << "init_not_quantized/total: " << num_init_not_quantized << "/"
           << count;
-  LOG(INFO) << "to_update/not_tobe_quantized/not_yet_quantized: "
+  LOG_IF(INFO, Caffe::root_solver()) << "to_update/not_tobe_quantized/not_yet_quantized: "
           << num_tobe_update << "/" << num_not_tobe_quantized << "/"
           << num_not_yet_quantized;
 
@@ -295,6 +363,7 @@ void INQInnerProductLayer<Dtype>::ShapeIntoTwoPower_gpu(
   }
 
 } // ShapeIntoTwoPower_gpu
+*/
 
 INSTANTIATE_LAYER_GPU_FUNCS(INQInnerProductLayer);
 

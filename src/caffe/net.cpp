@@ -450,7 +450,7 @@ void Net<Dtype>::AppendParam(const NetParameter& param, const int layer_id,
   bool is_inq_param_ = false;
   if (param.layer(layer_id).type() == "INQInnerProduct" || 
       param.layer(layer_id).type() == "INQConvolution") {
-    LOG(INFO) << "Found INQ layer:" << param.layer(layer_id).name() <<", " 
+    LOG_IF(INFO, Caffe::root_solver()) << "Found INQ layer:" << param.layer(layer_id).name() <<", " 
               << "type: " <<param.layer(layer_id).type() <<", "
               << "layer id:" << layer_id;
     is_inq_param_ = true;

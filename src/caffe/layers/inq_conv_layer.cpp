@@ -74,7 +74,8 @@ void INQConvolutionLayer<Dtype>::Forward_cpu(
     if (this->iter_ == 0 && !this->quantized_) {
       // Make the corresponding weights & bias into two power form.
       if (this->blobs_.size() == 4 && (this->bias_term_)) {
-        LOG_IF(INFO, Caffe::root_solver()) << this->type() << " Shaping the weights...";
+        LOG_IF(INFO, Caffe::root_solver()) << this->name() << " ("
+            << this->type() << "): "<< " Shaping the weights...";
         ComputeQuantumRange(this->blobs_[0].get(), this->blobs_[2].get(),
                             this->portions_, weight_quantum_values_,
                             num_weight_quantum_values_, max_weight_quantum_exp_,
@@ -82,7 +83,8 @@ void INQConvolutionLayer<Dtype>::Forward_cpu(
         ShapeIntoTwoPower_cpu(this->blobs_[0].get(), this->blobs_[2].get(),
                           this->portions_, max_weight_quantum_exp_,
                           min_weight_quantum_exp_);
-        LOG_IF(INFO, Caffe::root_solver()) << this->type() << " Shaping the bias...";
+        LOG_IF(INFO, Caffe::root_solver()) << this->name() << " (" 
+            << this->type() << "): "<< " Shaping the bias...";
         ComputeQuantumRange(this->blobs_[1].get(), this->blobs_[3].get(),
                             this->portions_, bias_quantum_values_,
                             num_bias_quantum_values_, max_bias_quantum_exp_,
@@ -91,8 +93,9 @@ void INQConvolutionLayer<Dtype>::Forward_cpu(
                           this->portions_, max_bias_quantum_exp_,
                           min_bias_quantum_exp_);
       } else if (this->blobs_.size() == 2 && (!this->bias_term_)) {
-        LOG_IF(INFO, Caffe::root_solver()) << "ERROR: No bias terms found... but continue...";
-        LOG_IF(INFO, Caffe::root_solver()) << this->type() << " Shaping the weights...";
+        LOG_IF(INFO, Caffe::root_solver()) << "ERROR: No bias found... but continue...";
+        LOG_IF(INFO, Caffe::root_solver()) << this->name() << " ("
+          << this->type() << "): "<< " Shaping the weights...";
         ComputeQuantumRange(this->blobs_[0].get(), this->blobs_[1].get(),
                             this->portions_, weight_quantum_values_,
                             num_weight_quantum_values_, max_weight_quantum_exp_,

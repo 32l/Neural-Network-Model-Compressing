@@ -206,6 +206,7 @@ void Solver<Dtype>::Step(int iters) {
     net_->set_debug_info(display && param_.debug_info());
     /********** for neural network model compression **********/
     net_->set_current_iter_num(iter_);
+    net_->send_layer_names();
     /**********************************************************/
     // accumulate the loss and gradient
     Dtype loss = 0;

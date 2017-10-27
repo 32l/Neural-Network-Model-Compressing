@@ -46,7 +46,7 @@ void INQConvolutionLayer<Dtype>::Forward_gpu(
     const vector<Blob<Dtype> *> &bottom, const vector<Blob<Dtype> *> &top) {
   /* for two-power network */
   if (this->phase_ == TRAIN) {
-    if (this->iter_ == 0) {
+    if (this->iter_ == 0 && !this->quantized_) {
       // Make the corresponding weights & bias into two power form.
       if (this->blobs_.size() == 4 && (this->bias_term_)) {
         LOG_IF(INFO, Caffe::root_solver()) << this->type() << " Shaping the weights...";
@@ -76,6 +76,7 @@ void INQConvolutionLayer<Dtype>::Forward_gpu(
                           this->portions_, max_weight_quantum_exp_,
                           min_weight_quantum_exp_);
       }
+      this->quantized_ = true;
     }
   }
 

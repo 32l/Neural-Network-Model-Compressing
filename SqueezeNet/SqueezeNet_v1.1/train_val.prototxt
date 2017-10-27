@@ -21,7 +21,7 @@ layer {
   }
   data_param {
     source: "/home/data/caffe-imagenet/ilsvrc12_train_lmdb"
-    batch_size: 32
+    batch_size: 256
     backend: LMDB
   }
 }
@@ -674,9 +674,9 @@ layer {
   bottom: "pool10"
   bottom: "label"
   top: "accuracy"
-  #include {
-  #  phase: TEST
-  #}
+  include {
+    phase: TEST
+  }
 }
 layer {
   name: "accuracy_top5"
@@ -684,9 +684,9 @@ layer {
   bottom: "pool10"
   bottom: "label"
   top: "accuracy_top5"
-  #include {
-  #  phase: TEST
-  #}
+  include {
+    phase: TEST
+  }
   accuracy_param {
     top_k: 5
   }

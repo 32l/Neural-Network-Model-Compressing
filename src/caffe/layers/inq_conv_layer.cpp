@@ -45,6 +45,7 @@ void INQConvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype> *> &bottom,
   // Get the number of quantum values
   this->num_weight_quantum_values_ = inq_conv_param.num_quantum_values();
   this->num_bias_quantum_values_ = inq_conv_param.num_quantum_values();
+  this->quantized_ = false;
   /**********************************************************/
 }
 
@@ -70,7 +71,7 @@ void INQConvolutionLayer<Dtype>::Forward_cpu(
     const vector<Blob<Dtype> *> &bottom, const vector<Blob<Dtype> *> &top) {
   /********** for neural network model compression **********/
   if (this->phase_ == TRAIN) {
-    if (this->iter_ == 0) {
+    if (this->iter_ == 0 && !this->quantized_) {
       // Make the corresponding weights & bias into two power form.
       if (this->blobs_.size() == 4 && (this->bias_term_)) {
         LOG_IF(INFO, Caffe::root_solver()) << this->type() << " Shaping the weights...";
@@ -100,6 +101,7 @@ void INQConvolutionLayer<Dtype>::Forward_cpu(
                           this->portions_, max_weight_quantum_exp_,
                           min_weight_quantum_exp_);
       }
+      this->quantized_ = true;
     }
   }
   /**********************************************************/
@@ -198,16 +200,16 @@ void INQConvolutionLayer<Dtype>::ComputeQuantumRange(
   // Get the max_quantum_exp_
   if (fabs(max_value_quantized) <= FLT_EPSILON) { // DNS init model
     CHECK_GT(updated, 0) << "max_value_quantized(" << max_value_quantized
-                         << ") is not 0.0, but updated is 0!";
+                         << ") exists (0.0),probably DNS init model, but updated is 0!";
     if (max_value_tobe_quantized == INT_MIN){ // all pruned away already
       max_quantum_exp_ = -100;  // set to a special number.
     } else {
-      CHECK_GT(max_value_tobe_quantized, FLT_EPSILON) << "error wiht DNS raw model!";
+      CHECK_GT(max_value_tobe_quantized, FLT_EPSILON) << "error with DNS raw model or check the input model!";
       max_quantum_exp_ = floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
     }
   } else if (max_value_quantized == INT_MIN) { // normal init model
     CHECK_EQ(updated, 0) << "Normal init model, updated should be 0!";
-    CHECK_GT(max_value_tobe_quantized, FLT_EPSILON) << "error wiht normal init model!";
+    CHECK_GT(max_value_tobe_quantized, FLT_EPSILON) << "error with normal init model or check the input model!";
     max_quantum_exp_ = floor(log(4.0 * max_value_tobe_quantized / 3.0) / log(2.0));
   } else { // normal situation, both quantized and not quantized exist
     CHECK_GT(max_value_tobe_quantized, FLT_EPSILON);

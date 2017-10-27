@@ -62,6 +62,7 @@ protected:
   int min_bias_quantum_exp_;
   vector<Dtype> weight_quantum_values_;
   vector<Dtype> bias_quantum_values_;
+  bool quantized_;
 };
 
 } // namespace caffe

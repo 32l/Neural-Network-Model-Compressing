@@ -196,7 +196,7 @@ class Net {
   }
   inline void send_layer_names(){
     for (int layer_id = 0; layer_id < layers_.size(); ++layer_id) {
-      layer_[layer_id]->set_name(layer_names()[layer_id]);
+      layers_[layer_id]->set_name(layer_names()[layer_id]);
     }
   }
   /**********************************************************/

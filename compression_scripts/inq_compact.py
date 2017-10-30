@@ -9,6 +9,7 @@ except KeyError:
     sys.exit(-1)
 
 sys.path.append(caffe_root+"/python")
+sys.path.append(caffe_root+"/python/caffe/proto")
 # sys.path.append(os.getenv("CAFFE_ROOT")+"/python/caffe/proto")
 import caffe
 import caffe_pb2
@@ -67,7 +68,7 @@ param_layer_ids = [i for i, layer in enumerate(layers) if len(layer.blobs) > 0]
 fout = open(output, 'wb')
 
 def save_to_file(wb_inq, param_name, num_kept_value, bits, param_t):
-    fabs_params = np.fabs(weights_inq)
+    fabs_params = np.fabs(wb_inq)
 
     min_exp = np.round(np.log2(np.min(fabs_params[fabs_params > 0])))
     max_exp = np.round(np.log2(np.max(fabs_params)))
@@ -86,10 +87,12 @@ def save_to_file(wb_inq, param_name, num_kept_value, bits, param_t):
     wb_inq = np.around(wb_inq ).astype(np.uint16)
 
     if True in (wb_inq < 0):
-        print "Error: weight in layer %s should not be negative!"%layer.name
+         
+        print "Error: weight in layer %s should not be negative!"%param_name
         sys.exit()
     elif True in (wb_inq > (2**bits-1)):
-        print "Error: weight in layer %s should not be over 2** bits!"%layer.name
+        
+        print "Error: weight(max:%d) in layer %s should not be over 2**%d = %d!"%(wb_inq.max(), param_name, bits, 2**bits)
         sys.exit()
     # wb_inq = wb_inq.astype(np.uint8)
     # save info to file
@@ -115,7 +118,8 @@ def save_to_file(wb_inq, param_name, num_kept_value, bits, param_t):
 
 for layer_id in param_layer_ids:
     if len(layers[layer_id].blobs) == 4 or len(layers[layer_id].blobs) == 2:
-        weight_inq = np.array(layers[layer_id].blobs[0].data).flatten()
+        print "saving layer <%s>..."%(layers[layer_id].name)
+        weights_inq = np.array(layers[layer_id].blobs[0].data).flatten()
         save_to_file(weights_inq, layers[layer_id].name, num_kept_value, bits, Param_type.WEIGHT)
         bias_inq = np.array(layers[layer_id].blobs[1].data).flatten()
         save_to_file(bias_inq, layers[layer_id].name, num_kept_value, bits, Param_type.BIAS)
@@ -133,3 +137,5 @@ for param_name in param_name_list:
 '''
 
 fout.close()
+
+

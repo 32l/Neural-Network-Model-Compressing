@@ -11,6 +11,7 @@ except KeyError:
 sys.path.append(caffe_root+"/python")
 # sys.path.append(os.getenv("CAFFE_ROOT")+"/python/caffe/proto")
 import caffe
+import caffe_pb2
 
 help = '''
 Usage:
@@ -19,11 +20,11 @@ Usage:
 Converting the Caffe-output INQ model (twice the size of a normal model) to a 4-bit format, all parameters stored, including zeros.
 
 Code book example: 
-4-bit code:          0000  0001  0010  0011  0100  0101  0110  0111
-corresponding param: -2^-9 -2^-8 -2^-7 -2^-6 -2^-5 -2^-4 -2^-3  0.0
+4-bit code:           0000   0001   0010   0011   0100   0101   0110  0111
+corresponding param: -2^-9  -2^-8  -2^-7  -2^-6  -2^-5  -2^-4  -2^-3  0.0
 
-4-bit code:          1000  1001  1010  1011  1100  1101  1110  1111
-corresponding param:  2^-9  2^-8  2^-7  2^-6  2^-5  2^-4  2^-3  N/A
+4-bit code:           1000   1001   1010   1011   1100   1101   1110  1111
+corresponding param:  2^-9   2^-8   2^-7   2^-6   2^-5   2^-4   2^-3  N/A
 '''
 # corresponding to num_quantum_values in caffe.prototxt
 num_kept_value = 7
@@ -42,19 +43,26 @@ else:
     src_model = sys.argv[2]  # <source_inq.caffemodel>
     output = sys.argv[3]   # <output.compact>
 
-if not os.path.exists(src_proto):
-    print "Error: %s does not exist!"%(src_proto)
-    sys.exit()
-elif not os.path.exists(src_model):
+if not os.path.exists(src_model):
     print "Error: %s does not exist!"%(src_model)
     sys.exit()
+# elif not os.path.exists(src_proto):
+#     print "Error: %s does not exist!"%(src_proto)
+#     sys.exit()
 
-caffe.set_mode_cpu()
-net = caffe.Net(src_proto, caffe.TEST, weights = src_model)
-print ' '
-print "params.keys() : ", net.params.keys()
+# caffe.set_mode_cpu()
+# net = caffe.Net(src_proto, caffe.TEST, weights = src_model)
 
-param_name_list = filter(lambda x: "conv" in x or "ip" in x or "fc" in x or "fire" in x, net.params.keys())
+model = caffe_pb2.NetParameter()
+with open(src_model, 'rb') as f:
+    model.ParseFromString(f.read())
+
+layers = model.layer
+param_layer_ids = [i for i, layer in enumerate(layers) if len(layer.blobs) > 0]
+# param_layer_id = [i for i, layer in enumerate(layers) if ("conv" in layer.name 
+#                 or "ip" in layer.name or "fc" in layer.name or "fire" in 
+#                 layer.name) and "INQ" in layer.type ]
+# param_name_list = filter(lambda x: "conv" in x or "ip" in x or "fc" in x or "fire" in x, net.params.keys())
 
 fout = open(output, 'wb')
 
@@ -105,7 +113,14 @@ def save_to_file(wb_inq, param_name, num_kept_value, bits, param_t):
         wb_to_store = wb_inq[np.arange(0, wb_size, 2)] + wb_inq[np.arange(1, wb_size, 2)]*2**bits
         wb_to_store.tofile(fout)
 
+for layer_id in param_layer_ids:
+    if len(layers[layer_id].blobs) == 4 or len(layers[layer_id].blobs) == 2:
+        weight_inq = np.array(layers[layer_id].blobs[0].data).flatten()
+        save_to_file(weights_inq, layers[layer_id].name, num_kept_value, bits, Param_type.WEIGHT)
+        bias_inq = np.array(layers[layer_id].blobs[1].data).flatten()
+        save_to_file(bias_inq, layers[layer_id].name, num_kept_value, bits, Param_type.BIAS)
 
+'''
 for param_name in param_name_list:
     if len(net.params[param_name]) == 4 or len(net.params[param_name]) == 2:
         weights_inq = net.params[param_name][0].data.flatten()
@@ -115,5 +130,6 @@ for param_name in param_name_list:
     else:
         print "Error: layer [%s]'s param size is not 2 or 4!"%(param_name)
         sys.exit()
+'''
 
 fout.close()

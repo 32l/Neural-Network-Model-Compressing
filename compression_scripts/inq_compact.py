@@ -30,8 +30,8 @@ num_kept_value = 7
 # bits and num_kept_value should be in accordance with each other
 bits = 4
 
-Fire_type = Enum(fire_t, (One_x_One, Three_x_Three))
-Param_type = Enum(param_t, (WEIGHT, BIAS))
+# Fire_type = Enum(fire_t, (One_x_One, Three_x_Three))
+Param_type = Enum('param_t', ('WEIGHT', 'BIAS'))
 
 
 if len(sys.argv) != 4:
@@ -39,8 +39,8 @@ if len(sys.argv) != 4:
     sys.exit(-1)
 else:
     src_proto = sys.argv[1] # <source_inq_net.prototxt
-    src_model = sys.argv[1]  # <source_inq.caffemodel>
-    output = sys.argv[2]   # <output.compact>
+    src_model = sys.argv[2]  # <source_inq.caffemodel>
+    output = sys.argv[3]   # <output.compact>
 
 if not os.path.exists(src_proto):
     print "Error: %s does not exist!"%(src_proto)
@@ -51,6 +51,9 @@ elif not os.path.exists(src_model):
 
 caffe.set_mode_cpu()
 net = caffe.Net(src_proto, caffe.TEST, weights = src_model)
+print ' '
+print "params.keys() : ", net.params.keys()
+
 param_name_list = filter(lambda x: "conv" in x or "ip" in x or "fc" in x or "fire" in x, net.params.keys())
 
 fout = open(output, 'wb')

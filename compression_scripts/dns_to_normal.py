@@ -43,7 +43,7 @@ caffe.set_mode_cpu()
 
 net = caffe.Net(prototxt, caffe.TEST, weights=dns_model)
 net_target = caffe.Net(target_prototxt, caffe.TEST)
-param_name_list = filter(lambda x: "conv" in x or "ip" in x or "fc" in x, net.params.keys())
+param_name_list = filter(lambda x: "conv" in x or "ip" in x or "fc" in x , net.params.keys())
 
 # number of decorative marks
 num_mark = 55

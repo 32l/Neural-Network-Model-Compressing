@@ -41,7 +41,7 @@ layer {
   }
   data_param {
     source: "/home/data/caffe-imagenet/ilsvrc12_val_lmdb"
-    batch_size: 25 #not *iter_size
+    batch_size: 50 #not *iter_size
     backend: LMDB
   }
 }

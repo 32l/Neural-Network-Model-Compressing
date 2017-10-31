@@ -107,13 +107,16 @@ def save_to_file(wb_inq, param_name, num_kept_value, bits, param_t):
         # 16 bits stores three 4-bit number
         num_append = ((wb_size - 1)/3 + 1)*3 - wb_size
         wb_inq = np.append(wb_inq, np.zeros(num_append, dtype = np.uint16))
-        wb_size = wb_size + num_append
+        wb_size = wb_inq.size
         wb_to_store = wb_inq[np.arange(0, wb_size, 3)] + wb_inq[np.arange(1, wb_size, 3)]*2**bits + wb_inq[np.arange(2, wb_size, 3)]*2**(2*bits)
         wb_to_store.tofile(fout)
     else:
-        wb_inq = np.append(wb_inq, np.zeros(wb_size%2, dtype = np.uint16))
+        # num_append = ((wb_size - 1)/2 + 1)*2 - wb_size
+        num_append = ((wb_size - 1)/4 + 1)*4 - wb_size
+        wb_inq = np.append(wb_inq, np.zeros(num_append, dtype = np.uint16))
         wb_size = wb_inq.size
-        wb_to_store = wb_inq[np.arange(0, wb_size, 2)] + wb_inq[np.arange(1, wb_size, 2)]*2**bits
+        # wb_to_store = wb_inq[np.arange(0, wb_size, 2)] + wb_inq[np.arange(1, wb_size, 2)]*2**bits
+        wb_to_store = wb_inq[np.arange(0, wb_size, 4)] + wb_inq[np.arange(1, wb_size, 4)]*2**bits + wb_inq[np.arange(2, wb_size, 4)]*2**(2*bits) + wb_inq[np.arange(3, wb_size, 4)]*2**(3*bits)
         wb_to_store.tofile(fout)
 
 for layer_id in param_layer_ids:

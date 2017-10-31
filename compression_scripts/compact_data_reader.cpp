@@ -15,7 +15,7 @@ int get_wb_stored_num(const int count, Layer_type lt) {
   if (lt == SQUEEZE3x3){
     return (count-1)/3 +1 ;
   } else{
-    return (count-1)/2 +1 ;
+    return (count-1)/4 +1 ;
   }
 }
 
@@ -44,7 +44,7 @@ void read_half_layer(ifstream &in, int layer_id, vector<char> &min_exp_w, vector
   int init_exp = -100;
   char tmp_c;
   int tmp_i;
-  shared_ptr<unsigned char> tmp_char_ptr;
+  //shared_ptr<unsigned char> tmp_short_ptr;
   shared_ptr<unsigned short> tmp_short_ptr;
   // read the minimum exp for this block of data
   // min_exp_w.resize(layer_id, init_exp);
@@ -98,24 +98,24 @@ void read_half_layer(ifstream &in, int layer_id, vector<char> &min_exp_w, vector
     }
   } else { // normal layer or squeeze1x1 layer
     // read the short 
-    int char_len = get_wb_stored_num(count_w[layer_id-1], OTHER);
-    cout << "-- normal short_len = " << char_len << endl;
+    int short_len = get_wb_stored_num(count_w[layer_id-1], OTHER);
+    cout << "-- normal short_len = " << short_len << endl;
     // weights_s[layer_id-1].resize(short_len, 0);
-    tmp_char_ptr.reset(new unsigned char(char_len));
+    tmp_short_ptr.reset(new unsigned short(short_len));
     cout << "-- reading normal params ... " << endl;
-    in.read(reinterpret_cast<char *>(tmp_char_ptr.get()), char_len );
+    in.read(reinterpret_cast<char *>(tmp_short_ptr.get()), short_len );
 
     cout << "-- moving char to weights_s... " << endl;
     for (int i = 0; i< 4; i++){
-      printf("-- uchar[%d] = %x \n", i, tmp_char_ptr.get()[i] );
+      printf("-- ushort[%d] = %x \n", i, tmp_short_ptr.get()[i] );
     }
     
-    for (int i=0; i< char_len; ++i){
-      weights_s[layer_id-1].push_back(tmp_char_ptr.get()[i]);
+    for (int i=0; i< short_len; ++i){
+      weights_s[layer_id-1].push_back(tmp_short_ptr.get()[i]);
     }
     // store the real values to weights
     cout << "-- storing the params... " << endl;
-    for (int i= 0; i< char_len; ++i){
+    for (int i= 0; i< short_len; ++i){
       unsigned short tmp_short = weights_s[layer_id-1][i];
       // 1st
       unsigned char code = 0xF & tmp_short;
@@ -123,17 +123,17 @@ void read_half_layer(ifstream &in, int layer_id, vector<char> &min_exp_w, vector
       // 2nd
       code = 0xF & (tmp_short >> 4);
       weights[layer_id-1].push_back(code_book.find(code)->second);
-/*
+
       // 3rd
       code = 0xF & (tmp_short >> 8);
       weights[layer_id-1].push_back(code_book.find(code)->second);
       // 4th
       code = 0xF & (tmp_short >> 12);
       weights[layer_id-1].push_back(code_book.find(code)->second);
-*/
+
     }
     // delete the last few redundant values
-    if(char_len % 2 == 1){
+    if(short_len % 2 == 1){
       weights.pop_back();
     }
   }

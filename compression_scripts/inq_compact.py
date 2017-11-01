@@ -87,20 +87,20 @@ def save_to_file(wb_inq, param_name, num_kept_value, bits, param_t):
     wb_inq = np.around(wb_inq ).astype(np.uint16)
 
     if True in (wb_inq < 0):
-         
         print "Error: weight in layer %s should not be negative!"%param_name
         sys.exit()
     elif True in (wb_inq > (2**bits-1)):
-        
         print "Error: weight(max:%d) in layer %s should not be over 2**%d = %d!"%(wb_inq.max(), param_name, bits, 2**bits)
         sys.exit()
     # wb_inq = wb_inq.astype(np.uint8)
     # save info to file
     wb_size = wb_inq.size
     # save the minimum exp, uint8
-    np.array([min_exp], dtype = np.uint8).tofile(fout)
+    np.array([min_exp], dtype = np.uint8 ).tofile(fout)
+    print "min exp = %d"%min_exp
     # save the params' size
     np.array([wb_size], dtype = np.int32 ).tofile(fout)
+    # print "param count ="
     # save the params
     if param_t == Param_type.WEIGHT and "3x3" in param_name:
         # the param is weight and is in squeeze3x3 layer
@@ -108,23 +108,34 @@ def save_to_file(wb_inq, param_name, num_kept_value, bits, param_t):
         num_append = ((wb_size - 1)/3 + 1)*3 - wb_size
         wb_inq = np.append(wb_inq, np.zeros(num_append, dtype = np.uint16))
         wb_size = wb_inq.size
+        print "---- saving size: %d"%wb_size
         wb_to_store = wb_inq[np.arange(0, wb_size, 3)] + wb_inq[np.arange(1, wb_size, 3)]*2**bits + wb_inq[np.arange(2, wb_size, 3)]*2**(2*bits)
+        print "==== stored size: %d"%wb_to_store.size
         wb_to_store.tofile(fout)
     else:
         # num_append = ((wb_size - 1)/2 + 1)*2 - wb_size
         num_append = ((wb_size - 1)/4 + 1)*4 - wb_size
         wb_inq = np.append(wb_inq, np.zeros(num_append, dtype = np.uint16))
         wb_size = wb_inq.size
+        print "---- saving size: %d"%wb_size
         # wb_to_store = wb_inq[np.arange(0, wb_size, 2)] + wb_inq[np.arange(1, wb_size, 2)]*2**bits
         wb_to_store = wb_inq[np.arange(0, wb_size, 4)] + wb_inq[np.arange(1, wb_size, 4)]*2**bits + wb_inq[np.arange(2, wb_size, 4)]*2**(2*bits) + wb_inq[np.arange(3, wb_size, 4)]*2**(3*bits)
+        print "==== stored size: %d"%wb_to_store.size
+        if param_name == 'conv1':
+          for i, val in enumerate(wb_to_store):
+            print "%4x "%val,
+            if (i+1) %10 ==0:
+              print ''
+        print ''
         wb_to_store.tofile(fout)
 
 for layer_id in param_layer_ids:
     if len(layers[layer_id].blobs) == 4 or len(layers[layer_id].blobs) == 2:
-        print "saving layer <%s>..."%(layers[layer_id].name)
         weights_inq = np.array(layers[layer_id].blobs[0].data).flatten()
+        print "saving layer <%s>, weights_size = %d..."%(layers[layer_id].name, weights_inq.size)
         save_to_file(weights_inq, layers[layer_id].name, num_kept_value, bits, Param_type.WEIGHT)
         bias_inq = np.array(layers[layer_id].blobs[1].data).flatten()
+        print "saving layer <%s>, bias_size =    %d..."%(layers[layer_id].name, bias_inq.size)
         save_to_file(bias_inq, layers[layer_id].name, num_kept_value, bits, Param_type.BIAS)
 
 '''

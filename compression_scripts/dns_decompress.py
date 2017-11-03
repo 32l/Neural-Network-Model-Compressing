@@ -45,6 +45,7 @@ f_comp = open(compressed_model, 'rb')
 def comp_to_normal(weights, spm_s, idx_s):
     data = np.zeros(weights.size, dtype=np.float32)
     data[idx_s] = spm_s
+    data = data.reshape(weights.shape)
     np.copyto(weights, data)
 
 

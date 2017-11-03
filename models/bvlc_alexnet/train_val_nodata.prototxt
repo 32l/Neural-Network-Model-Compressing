@@ -10,10 +10,10 @@ layer {
   transform_param {
     mirror: true
     crop_size: 227
-    mean_file: "data/ilsvrc12/imagenet_mean.binaryproto"
+    mean_file: ""
   }
   data_param {
-    source: "/home/data/caffe-imagenet/ilsvrc12_train_lmdb"
+    source: ""
     batch_size: 256
     backend: LMDB
   }
@@ -39,7 +39,7 @@ layer {
 }
 layer {
   name: "conv1"
-  type: "CConvolution"
+  type: "Convolution"
   bottom: "data"
   top: "conv1"
   param {
@@ -61,20 +61,6 @@ layer {
     bias_filler {
       type: "constant"
       value: 0
-    }
-  }
-  cconvolution_param {
-    gamma: 0.0001
-    power: 1
-    c_rate: 2
-    iter_stop: 14000  
-    weight_mask_filler {
-      type: "constant"
-      value: 1
-    }
-    bias_mask_filler {
-      type: "constant"
-      value: 1
     }
   }
 }
@@ -108,7 +94,7 @@ layer {
 }
 layer {
   name: "conv2"
-  type: "CConvolution"
+  type: "Convolution"
   bottom: "pool1"
   top: "conv2"
   param {
@@ -133,20 +119,6 @@ layer {
       value: 0.1
     }
   }
-  cconvolution_param {
-    gamma: 0.0001
-    power: 1
-    c_rate: 2
-    iter_stop: 14000  
-    weight_mask_filler {
-      type: "constant"
-      value: 1
-    }
-    bias_mask_filler {
-      type: "constant"
-      value: 1
-    }
-  }  
 }
 layer {
   name: "relu2"
@@ -178,7 +150,7 @@ layer {
 }
 layer {
   name: "conv3"
-  type: "CConvolution"
+  type: "Convolution"
   bottom: "pool2"
   top: "conv3"
   param {
@@ -202,20 +174,6 @@ layer {
       value: 0
     }
   }
-  cconvolution_param {
-    gamma: 0.0001
-    power: 1
-    c_rate: 2
-    iter_stop: 14000  
-    weight_mask_filler {
-      type: "constant"
-      value: 1
-    }
-    bias_mask_filler {
-      type: "constant"
-      value: 1
-    }
-  }
 }
 layer {
   name: "relu3"
@@ -225,7 +183,7 @@ layer {
 }
 layer {
   name: "conv4"
-  type: "CConvolution"
+  type: "Convolution"
   bottom: "conv3"
   top: "conv4"
   param {
@@ -250,20 +208,6 @@ layer {
       value: 0.1
     }
   }
-  cconvolution_param {
-    gamma: 0.0001
-    power: 1
-    c_rate: 2
-    iter_stop: 14000  
-    weight_mask_filler {
-      type: "constant"
-      value: 1
-    }
-    bias_mask_filler {
-      type: "constant"
-      value: 1
-    }
-  }  
 }
 layer {
   name: "relu4"
@@ -273,7 +217,7 @@ layer {
 }
 layer {
   name: "conv5"
-  type: "CConvolution"
+  type: "Convolution"
   bottom: "conv4"
   top: "conv5"
   param {
@@ -298,20 +242,6 @@ layer {
       value: 0.1
     }
   }
-  cconvolution_param {
-    gamma: 0.0001
-    power: 1
-    c_rate: 2
-    iter_stop: 14000  
-    weight_mask_filler {
-      type: "constant"
-      value: 1
-    }
-    bias_mask_filler {
-      type: "constant"
-      value: 1
-    }
-  }
 }
 layer {
   name: "relu5"
@@ -332,7 +262,7 @@ layer {
 }
 layer {
   name: "fc6"
-  type: "CInnerProduct"
+  type: "InnerProduct"
   bottom: "pool5"
   top: "fc6"
   param {
@@ -354,20 +284,6 @@ layer {
       value: 0.1
     }
   }
-  cinner_product_param {
-    gamma: 0.0001
-    power: 1
-    c_rate: 2
-    iter_stop: 14000  
-    weight_mask_filler {
-      type: "constant"
-      value: 1
-    }
-    bias_mask_filler {
-      type: "constant"
-      value: 1
-    }        
-  }
 }
 layer {
   name: "relu6"
@@ -386,7 +302,7 @@ layer {
 }
 layer {
   name: "fc7"
-  type: "CInnerProduct"
+  type: "InnerProduct"
   bottom: "fc6"
   top: "fc7"
   param {
@@ -408,20 +324,6 @@ layer {
       value: 0.1
     }
   }
-  cinner_product_param {
-    gamma: 0.0001
-    power: 1
-    c_rate: 2
-    iter_stop: 14000  
-    weight_mask_filler {
-      type: "constant"
-      value: 1
-    }
-    bias_mask_filler {
-      type: "constant"
-      value: 1
-    }        
-  }
 }
 layer {
   name: "relu7"
@@ -440,7 +342,7 @@ layer {
 }
 layer {
   name: "fc8"
-  type: "CInnerProduct"
+  type: "InnerProduct"
   bottom: "fc7"
   top: "fc8"
   param {
@@ -461,20 +363,6 @@ layer {
       type: "constant"
       value: 0
     }
-  }
-  cinner_product_param {
-    gamma: 0.0001
-    power: 1
-    c_rate: 2
-    iter_stop: 14000  
-    weight_mask_filler {
-      type: "constant"
-      value: 1
-    }
-    bias_mask_filler {
-      type: "constant"
-      value: 1
-    }        
   }
 }
 layer {

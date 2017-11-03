@@ -405,10 +405,10 @@ message LayerParameter {
   optional ThresholdParameter threshold_param = 128;
   optional TileParameter tile_param = 138;
   optional WindowDataParameter window_data_param = 129;
-  optional CConvolutionParameter cconvolution_param = 147;
-  optional CInnerProductParameter cinner_product_param = 148;  
-  optional TPConvolutionParameter tpconvolution_param = 149;
-  optional TPInnerProductParameter tpinner_product_param = 150;
+  optional DNSConvolutionParameter dns_convolution_param = 147;
+  optional DNSInnerProductParameter dns_inner_product_param = 148;  
+  optional INQConvolutionParameter inq_convolution_param = 149;
+  optional INQInnerProductParameter inq_inner_product_param = 150;
 }
 
 // Message that stores parameters used to apply transformation
@@ -624,16 +624,16 @@ message ConvolutionParameter {
   optional bool force_nd_im2col = 17 [default = false];
 }
 
-message CConvolutionParameter {
+message DNSConvolutionParameter {
   optional float gamma = 1 [default = 0.001]; // The compress parameter of current layer
   optional float power = 2 [default = 1];
-  optional float iter_stop = 3 [default = 10000];  
-  optional float c_rate = 4 [default = 3];    
+  optional float c_rate = 3 [default = 1]; 
+  optional float iter_stop = 4 [default = 10000000];  
   optional FillerParameter weight_mask_filler = 5; // The filler for the weight
   optional FillerParameter bias_mask_filler = 6;   // The filler for the bias  
 }
 
-message TPConvolutionParameter {
+message INQConvolutionParameter {
   repeated float portion = 1;
   optional int32 num_quantum_values = 4 [default = 8];
   
@@ -856,16 +856,16 @@ message InnerProductParameter {
   optional bool transpose = 6 [default = false];
 }
 
-message CInnerProductParameter {
+message DNSInnerProductParameter {
   optional float gamma = 1 [default = 0.001]; // The compress parameter of current layer
   optional float power = 2 [default = 1];
-  optional float iter_stop = 3 [default = 8000];
-  optional float c_rate = 4 [default = 3];  
+  optional float c_rate = 3 [default = 1]; 
+  optional float iter_stop = 4 [default = 1000000];
   optional FillerParameter weight_mask_filler = 5; // The filler for the weight
   optional FillerParameter bias_mask_filler = 6;   // The filler for the bias  
 }
 
-message TPInnerProductParameter {
+message INQInnerProductParameter {
   repeated float portion = 1;   // array of portions
   optional int32 num_quantum_values = 4 [default = 8];
   

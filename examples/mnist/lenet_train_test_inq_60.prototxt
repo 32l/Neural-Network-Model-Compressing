@@ -35,7 +35,7 @@ layer {
 }
 layer {
   name: "conv1"
-  type: "DNSConvolution"
+  type: "INQConvolution"
   bottom: "data"
   top: "conv1"
   param {
@@ -55,11 +55,10 @@ layer {
       type: "constant"
     }
   }
-  dns_convolution_param {
-    gamma: 0.0001
-    power: 1
-    c_rate: 1
-    iter_stop: 140000 
+  inq_convolution_param {
+    portion: 0.3
+    portion: 0.6
+    num_quantum_values: 7
     weight_mask_filler {
       type: "constant"
       value: 1
@@ -67,8 +66,8 @@ layer {
     bias_mask_filler {
       type: "constant"
       value: 1
-    }        
-  }   
+    }
+  } 
 }
 layer {
   name: "pool1"
@@ -83,7 +82,7 @@ layer {
 }
 layer {
   name: "conv2"
-  type: "DNSConvolution"
+  type: "INQConvolution"
   bottom: "pool1"
   top: "conv2"
   param {
@@ -103,11 +102,10 @@ layer {
       type: "constant"
     }
   }
-  dns_convolution_param {
-    gamma: 0.0001
-    power: 1
-    c_rate: 2
-    iter_stop: 140000  
+  inq_convolution_param {
+    portion: 0.3
+    portion: 0.6 
+    num_quantum_values: 7
     weight_mask_filler {
       type: "constant"
       value: 1
@@ -131,7 +129,7 @@ layer {
 }
 layer {
   name: "ip1"
-  type: "DNSInnerProduct"
+  type: "INQInnerProduct"
   bottom: "pool2"
   top: "ip1"
   param {
@@ -149,11 +147,10 @@ layer {
       type: "constant"
     }
   }
-  dns_inner_product_param {
-    gamma: 0.0001
-    power: 1
-    c_rate: 2
-    iter_stop: 140000  
+  inq_inner_product_param {
+    portion: 0.3
+    portion: 0.6
+    num_quantum_values: 7
     weight_mask_filler {
       type: "constant"
       value: 1
@@ -161,8 +158,8 @@ layer {
     bias_mask_filler {
       type: "constant"
       value: 1
-    }        
-  }
+    }
+  } 
 }
 layer {
   name: "relu1"
@@ -172,7 +169,7 @@ layer {
 }
 layer {
   name: "ip2"
-  type: "DNSInnerProduct"
+  type: "INQInnerProduct"
   bottom: "ip1"
   top: "ip2"
   param {
@@ -190,11 +187,10 @@ layer {
       type: "constant"
     }
   }
-  dns_inner_product_param {
-    gamma: 0.0001
-    power: 1
-    c_rate: 1
-    iter_stop: 140000
+  inq_inner_product_param {
+    portion: 0.3
+    portion: 0.6 
+    num_quantum_values: 7
     weight_mask_filler {
       type: "constant"
       value: 1
@@ -203,7 +199,7 @@ layer {
       type: "constant"
       value: 1
     }
-  }
+  } 
 }
 layer {
   name: "accuracy"

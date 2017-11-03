@@ -191,6 +191,14 @@ class Net {
       layers_[layer_id]->set_current_iter_num(iter_num);
     }
   }
+  inline const vector<int>& inq_param_ids() const {
+    return inq_param_ids_;
+  }
+  inline void send_layer_names(){
+    for (int layer_id = 0; layer_id < layers_.size(); ++layer_id) {
+      layers_[layer_id]->set_name(layer_names()[layer_id]);
+    }
+  }
   /**********************************************************/
 
   /// @brief returns the learnable parameter learning rate multipliers
@@ -339,11 +347,18 @@ class Net {
    * if and only if params_[i] is an "owner"; otherwise, params_[i] is a sharer
    * and learnable_params_[learnable_param_ids_[i]] gives its owner.
    */
+
+   // the owner is unique, learnable_params_ stores repeated learnable params 
+   // that are shared, which means params_.size() <= learnable_params_.size()
+   // learnable_params_[learnable_param_ids_[i]] points to some params_[j].get()
+   // i >= j
   vector<int> learnable_param_ids_;
 
   /********** for neural network model compression **********/
-  /// the index of mask parameters
+  // the index of mask parameters
   vector<int> mask_param_ids_;   
+  // the index of inq parameters
+  vector<int> inq_param_ids_;
   /**********************************************************/
 
   /// the learning rate multipliers for learnable_params_

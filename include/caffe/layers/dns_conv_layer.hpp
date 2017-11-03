@@ -12,19 +12,19 @@
 namespace caffe {
 
 /**
- * @brief Convolves the input with a bank of compressed filters, 
+ * @brief Convolves the input with a bank of pruned filters, 
  *  and (optionally) adds biases.
  */
 
 template <typename Dtype>
-class CConvolutionLayer : public BaseConvolutionLayer<Dtype> {
+class DNSConvolutionLayer : public BaseConvolutionLayer<Dtype> {
  public:
 
-  explicit CConvolutionLayer(const LayerParameter& param)
+  explicit DNSConvolutionLayer(const LayerParameter& param)
       : BaseConvolutionLayer<Dtype>(param) {}
   virtual void LayerSetUp(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top);
-  virtual inline const char* type() const { return "CConvolution"; }
+  virtual inline const char* type() const { return "DNSConvolution"; }
 
  protected:
   virtual void Forward_cpu(const vector<Blob<Dtype>*>& bottom,
@@ -41,11 +41,11 @@ class CConvolutionLayer : public BaseConvolutionLayer<Dtype> {
  private:
   Blob<Dtype> weight_tmp_;
   Blob<Dtype> bias_tmp_;   
-  Blob<Dtype> rand_weight_m_;
-  Blob<Dtype> rand_bias_m_;  
-  Dtype gamma,power;
-  Dtype crate; 
-  Dtype mu,std;    
+  Dtype mu_;
+  Dtype std_;
+  Dtype gamma_;
+  Dtype power_; 
+  Dtype c_rate_;  
   int iter_stop_;
 };
 

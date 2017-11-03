@@ -1,4 +1,4 @@
-name: "AlexNet"
+name: "CaffeNet"
 layer {
   name: "data"
   type: "Data"
@@ -10,10 +10,18 @@ layer {
   transform_param {
     mirror: true
     crop_size: 227
-    mean_file: "data/ilsvrc12/imagenet_mean.binaryproto"
+    mean_file: ""
   }
+# mean pixel / channel-wise mean instead of mean image
+#  transform_param {
+#    crop_size: 227
+#    mean_value: 104
+#    mean_value: 117
+#    mean_value: 123
+#    mirror: true
+#  }
   data_param {
-    source: "/home/data/caffe-imagenet/ilsvrc12_train_lmdb"
+    source: ""
     batch_size: 256
     backend: LMDB
   }
@@ -31,6 +39,14 @@ layer {
     crop_size: 227
     mean_file: "data/ilsvrc12/imagenet_mean.binaryproto"
   }
+# mean pixel / channel-wise mean instead of mean image
+#  transform_param {
+#    crop_size: 227
+#    mean_value: 104
+#    mean_value: 117
+#    mean_value: 123
+#    mirror: false
+#  }
   data_param {
     source: "/home/data/caffe-imagenet/ilsvrc12_val_lmdb"
     batch_size: 50
@@ -39,7 +55,7 @@ layer {
 }
 layer {
   name: "conv1"
-  type: "DNSConvolution"
+  type: "Convolution"
   bottom: "data"
   top: "conv1"
   param {
@@ -63,20 +79,6 @@ layer {
       value: 0
     }
   }
-  dns_convolution_param {
-    gamma: 0.0000125
-    power: 1
-    c_rate: -0.7
-    iter_stop: 450000  
-    weight_mask_filler {
-      type: "constant"
-      value: 1
-    }
-    bias_mask_filler {
-      type: "constant"
-      value: 1
-    }
-  }
 }
 layer {
   name: "relu1"
@@ -85,20 +87,9 @@ layer {
   top: "conv1"
 }
 layer {
-  name: "norm1"
-  type: "LRN"
-  bottom: "conv1"
-  top: "norm1"
-  lrn_param {
-    local_size: 5
-    alpha: 0.0001
-    beta: 0.75
-  }
-}
-layer {
   name: "pool1"
   type: "Pooling"
-  bottom: "norm1"
+  bottom: "conv1"
   top: "pool1"
   pooling_param {
     pool: MAX
@@ -107,9 +98,20 @@ layer {
   }
 }
 layer {
-  name: "conv2"
-  type: "DNSConvolution"
+  name: "norm1"
+  type: "LRN"
   bottom: "pool1"
+  top: "norm1"
+  lrn_param {
+    local_size: 5
+    alpha: 0.0001
+    beta: 0.75
+  }
+}
+layer {
+  name: "conv2"
+  type: "Convolution"
+  bottom: "norm1"
   top: "conv2"
   param {
     lr_mult: 1
@@ -130,23 +132,9 @@ layer {
     }
     bias_filler {
       type: "constant"
-      value: 0.1
+      value: 1
     }
   }
-  dns_convolution_param {
-    gamma: 0.0000125
-    power: 1
-    c_rate: -0.15
-    iter_stop: 450000  
-    weight_mask_filler {
-      type: "constant"
-      value: 1
-    }
-    bias_mask_filler {
-      type: "constant"
-      value: 1
-    }
-  }  
 }
 layer {
   name: "relu2"
@@ -155,20 +143,9 @@ layer {
   top: "conv2"
 }
 layer {
-  name: "norm2"
-  type: "LRN"
-  bottom: "conv2"
-  top: "norm2"
-  lrn_param {
-    local_size: 5
-    alpha: 0.0001
-    beta: 0.75
-  }
-}
-layer {
   name: "pool2"
   type: "Pooling"
-  bottom: "norm2"
+  bottom: "conv2"
   top: "pool2"
   pooling_param {
     pool: MAX
@@ -177,9 +154,20 @@ layer {
   }
 }
 layer {
-  name: "conv3"
-  type: "DNSConvolution"
+  name: "norm2"
+  type: "LRN"
   bottom: "pool2"
+  top: "norm2"
+  lrn_param {
+    local_size: 5
+    alpha: 0.0001
+    beta: 0.75
+  }
+}
+layer {
+  name: "conv3"
+  type: "Convolution"
+  bottom: "norm2"
   top: "conv3"
   param {
     lr_mult: 1
@@ -202,20 +190,6 @@ layer {
       value: 0
     }
   }
-  dns_convolution_param {
-    gamma: 0.0000125
-    power: 1
-    c_rate: 0.3
-    iter_stop: 450000  
-    weight_mask_filler {
-      type: "constant"
-      value: 1
-    }
-    bias_mask_filler {
-      type: "constant"
-      value: 1
-    }
-  }
 }
 layer {
   name: "relu3"
@@ -225,7 +199,7 @@ layer {
 }
 layer {
   name: "conv4"
-  type: "DNSConvolution"
+  type: "Convolution"
   bottom: "conv3"
   top: "conv4"
   param {
@@ -247,23 +221,9 @@ layer {
     }
     bias_filler {
       type: "constant"
-      value: 0.1
+      value: 1
     }
   }
-  dns_convolution_param {
-    gamma: 0.0000125
-    power: 1
-    c_rate: 0.25
-    iter_stop: 450000  
-    weight_mask_filler {
-      type: "constant"
-      value: 1
-    }
-    bias_mask_filler {
-      type: "constant"
-      value: 1
-    }
-  }  
 }
 layer {
   name: "relu4"
@@ -273,7 +233,7 @@ layer {
 }
 layer {
   name: "conv5"
-  type: "DNSConvolution"
+  type: "Convolution"
   bottom: "conv4"
   top: "conv5"
   param {
@@ -294,20 +254,6 @@ layer {
       std: 0.01
     }
     bias_filler {
-      type: "constant"
-      value: 0.1
-    }
-  }
-  dns_convolution_param {
-    gamma: 0.0000125
-    power: 1
-    c_rate: 0.25
-    iter_stop: 450000  
-    weight_mask_filler {
-      type: "constant"
-      value: 1
-    }
-    bias_mask_filler {
       type: "constant"
       value: 1
     }
@@ -332,7 +278,7 @@ layer {
 }
 layer {
   name: "fc6"
-  type: "DNSInnerProduct"
+  type: "InnerProduct"
   bottom: "pool5"
   top: "fc6"
   param {
@@ -350,20 +296,6 @@ layer {
       std: 0.005
     }
     bias_filler {
-      type: "constant"
-      value: 0.1
-    }
-  }
-  dns_inner_product_param {
-    gamma: 0.0000125
-    power: 1
-    c_rate: 1.6
-    iter_stop: -1
-    weight_mask_filler {
-      type: "constant"
-      value: 1
-    }
-    bias_mask_filler {
       type: "constant"
       value: 1
     }
@@ -386,7 +318,7 @@ layer {
 }
 layer {
   name: "fc7"
-  type: "DNSInnerProduct"
+  type: "InnerProduct"
   bottom: "fc6"
   top: "fc7"
   param {
@@ -404,20 +336,6 @@ layer {
       std: 0.005
     }
     bias_filler {
-      type: "constant"
-      value: 0.1
-    }
-  }
-  dns_inner_product_param {
-    gamma: 0.0000125
-    power: 1
-    c_rate: 1.6
-    iter_stop: -1
-    weight_mask_filler {
-      type: "constant"
-      value: 1
-    }
-    bias_mask_filler {
       type: "constant"
       value: 1
     }
@@ -440,7 +358,7 @@ layer {
 }
 layer {
   name: "fc8"
-  type: "DNSInnerProduct"
+  type: "InnerProduct"
   bottom: "fc7"
   top: "fc8"
   param {
@@ -460,20 +378,6 @@ layer {
     bias_filler {
       type: "constant"
       value: 0
-    }
-  }
-  dns_inner_product_param {
-    gamma: 0.0000125
-    power: 1
-    c_rate: 1
-    iter_stop: -1
-    weight_mask_filler {
-      type: "constant"
-      value: 1
-    }
-    bias_mask_filler {
-      type: "constant"
-      value: 1
     }
   }
 }

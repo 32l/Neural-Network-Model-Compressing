@@ -48,11 +48,11 @@ net = caffe.Net(prototxt_file, caffe.TEST, weights=caffemodel)
 f = open(compressed_model, 'wb')
 
 # with open(compressed_model, 'wb') as f:
-num_total = 0
-num_total_nonzero = 0
-num_conv = np.zeros(2, dtype=np.int32)
+# num_total = 0
+# num_total_nonzero = 0
+# num_conv = np.zeros(2, dtype=np.int32)
 num_nz_conv = np.zeros(2, dtype=np.int32)
-num_ip = np.zeros(2, dtype=np.int32)
+# num_ip = np.zeros(2, dtype=np.int32)
 num_nz_ip = np.zeros(2, dtype=np.int32)
 
 for param_name in net.params.keys():
@@ -107,4 +107,5 @@ for param_name in net.params.keys():
     else:
         pass
 
+f.close()
 

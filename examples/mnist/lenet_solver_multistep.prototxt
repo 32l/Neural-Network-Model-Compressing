@@ -1,5 +1,5 @@
 # The train/test net protocol buffer definition
-net: "examples/mnist/lenet_train_test_DNS.prototxt"
+net: "examples/mnist/lenet_train_test.prototxt"
 # test_iter specifies how many forward passes the test should carry out.
 # In the case of MNIST, we have test batch size 100 and 100 test iterations,
 # covering the full 10,000 testing images.
@@ -11,15 +11,19 @@ base_lr: 0.01
 momentum: 0.9
 weight_decay: 0.0005
 # The learning rate policy
-lr_policy: "inv"
-gamma: 0.0001
-power: 0.75
+lr_policy: "multistep"
+gamma: 0.1
+stepvalue: 1000
+stepvalue: 2000
+stepvalue: 3000
+stepvalue: 4000
+# power: 0.75
 # Display every 100 iterations
 display: 100
 # The maximum number of iterations
-max_iter: 30000
+max_iter: 10000
 # snapshot intermediate results
 snapshot: 5000
-snapshot_prefix: "examples/mnist/lenet_DNS"
+snapshot_prefix: "examples/mnist/lenet"
 # solver mode: CPU or GPU
 solver_mode: GPU

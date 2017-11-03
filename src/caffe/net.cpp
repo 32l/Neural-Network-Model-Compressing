@@ -106,6 +106,8 @@ void Net<Dtype>::Init(const NetParameter& in_param) {
     // If the layer specifies that AutoTopBlobs() -> true and the LayerParameter
     // specified fewer than the required number (as specified by
     // ExactNumTopBlobs() or MinTopBlobs()), allocate them here.
+
+    // layers_[layer_id] is the current layer params.
     Layer<Dtype>* layer = layers_[layer_id].get();
     if (layer->AutoTopBlobs()) {
       const int needed_num_top =
@@ -114,6 +116,9 @@ void Net<Dtype>::Init(const NetParameter& in_param) {
         // Add "anonymous" top blobs -- do not modify available_blobs or
         // blob_name_to_idx as we don't want these blobs to be usable as input
         // to other layers.
+
+        // available_blobs and blob_name_to_idx only stores the useful blobs'
+        // info
         AppendTop(param, layer_id, num_top, NULL, NULL);
       }
     }
@@ -125,6 +130,8 @@ void Net<Dtype>::Init(const NetParameter& in_param) {
       if (blob_loss_weights_.size() <= top_id_vecs_[layer_id][top_id]) {
         blob_loss_weights_.resize(top_id_vecs_[layer_id][top_id] + 1, Dtype(0));
       }
+      // layer->loss(top_id) returns the loss_weight of top_id, just a confusing
+      // name
       blob_loss_weights_[top_id_vecs_[layer_id][top_id]] = layer->loss(top_id);
       LOG_IF(INFO, Caffe::root_solver())
           << "Top shape: " << top_vecs_[layer_id][top_id]->shape_string();
@@ -438,6 +445,17 @@ void Net<Dtype>::AppendParam(const NetParameter& param, const int layer_id,
   ParamSpec default_param_spec;
   const ParamSpec* param_spec = (layer_param.param_size() > param_id) ?
       &layer_param.param(param_id) : &default_param_spec;
+
+  /********** for neural network model compression **********/
+  bool is_inq_param_ = false;
+  if (param.layer(layer_id).type() == "INQInnerProduct" || 
+      param.layer(layer_id).type() == "INQConvolution") {
+    LOG_IF(INFO, Caffe::root_solver()) << "Found INQ layer:" << param.layer(layer_id).name() <<", " 
+              << "type: " <<param.layer(layer_id).type() <<", "
+              << "layer id:" << layer_id;
+    is_inq_param_ = true;
+  }
+  /**********************************************************/      
   if (!param_size || !param_name.size() || (param_name.size() &&
       param_names_index_.find(param_name) == param_names_index_.end())) {
     // This layer "owns" this parameter blob -- it is either anonymous
@@ -453,6 +471,9 @@ void Net<Dtype>::AppendParam(const NetParameter& param, const int layer_id,
     /********** for neural network model compression **********/
     if(param_id >= 2){
       mask_param_ids_.push_back(learnable_param_id);
+    }
+    if (is_inq_param_) {
+      inq_param_ids_.push_back(learnable_param_id);
     }
     /**********************************************************/
     has_params_lr_.push_back(param_spec->has_lr_mult());
@@ -498,6 +519,9 @@ void Net<Dtype>::AppendParam(const NetParameter& param, const int layer_id,
     /********** for neural network model compression **********/
     if(param_id >= 2){
       mask_param_ids_.push_back(learnable_param_id);
+    } else if (is_inq_param_) {
+      // only stores the ids of INQ weights & bias, not the mask.
+      inq_param_ids_.push_back(learnable_param_id);
     }
     /**********************************************************/
     if (param_spec->has_lr_mult()) {
@@ -759,10 +783,10 @@ void Net<Dtype>::CopyTrainedLayersFrom(const NetParameter& param) {
         layers_[target_layer_id]->blobs();
     
     /********** for neural network model compression **********/
-    if (strcmp(layers_[target_layer_id]->type(),"CInnerProduct") == 0 || 
-      strcmp(layers_[target_layer_id]->type(),"CConvolution" ) == 0 ||
-      strcmp(layers_[target_layer_id]->type(),"TPInnerPorduct") == 0 ||
-      strcmp(layers_[target_layer_id]->type(),"TPConvvolution") == 0 ) {
+    if (strcmp(layers_[target_layer_id]->type(),"DNSInnerProduct") == 0 || 
+      strcmp(layers_[target_layer_id]->type(),"DNSConvolution" ) == 0 ||
+      strcmp(layers_[target_layer_id]->type(),"INQInnerProduct") == 0 ||
+      strcmp(layers_[target_layer_id]->type(),"INQConvolution") == 0 ) {
       if(target_blobs.size() > source_layer.blobs_size()) {
         for (int j = 0; j < source_layer.blobs_size(); ++j) {
           if (!target_blobs[j]->ShapeEquals(source_layer.blobs(j))) {
@@ -782,7 +806,7 @@ void Net<Dtype>::CopyTrainedLayersFrom(const NetParameter& param) {
         }
         continue;
       }
-    }     
+    }
     /**********************************************************/
     
     CHECK_EQ(target_blobs.size(), source_layer.blobs_size())

@@ -295,6 +295,10 @@ class Layer {
   inline void set_current_iter_num(const int iter_num) {
     iter_ = iter_num;
   }
+  inline void set_name(const string layer_name){
+    name_ = layer_name;
+  }
+  virtual inline const string& name() const { return name_; }
   /**********************************************************/
 
  protected:
@@ -305,6 +309,7 @@ class Layer {
   /********** for neural network model compression **********/
   /** The current iteration number */
   int iter_;
+  string name_;
   /**********************************************************/
   /** The vector that stores the learnable parameters as a set of blobs. */
   vector<shared_ptr<Blob<Dtype> > > blobs_;

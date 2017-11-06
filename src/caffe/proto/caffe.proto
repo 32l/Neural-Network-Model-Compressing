@@ -220,6 +220,9 @@ message SolverParameter {
   // MeanSquare(t) = rms_decay*MeanSquare(t-1) + (1-rms_decay)*SquareGradient(t)
   optional float rms_decay = 38 [default = 0.99];
 
+  // LarsSGD trust coefficient, range [0, 1)
+  optional float trust_coef = 42 [default = 0.9];
+
   // If true, print information about the state of the net that may help with
   // debugging learning problems.
   optional bool debug_info = 23 [default = false];
@@ -235,6 +238,7 @@ message SolverParameter {
     RMSPROP = 3;
     ADADELTA = 4;
     ADAM = 5;
+    LARSSGD = 6;
   }
   // DEPRECATED: use type instead of solver_type
   optional SolverType solver_type = 30 [default = SGD];

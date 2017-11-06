@@ -143,6 +143,32 @@ class AdamSolver : public SGDSolver<Dtype> {
   DISABLE_COPY_AND_ASSIGN(AdamSolver);
 };
 
+
+/**
+ * @brief LarsSGDSolver, an algorithm for training large batch size NN.
+ */
+template <typename Dtype>
+class LarsSGDSolver: public SGDSolver<Dtype> {
+ public: 
+  explicit LarsSGDSolver(const SolverParameter& param)
+      : SGDSolver<Dtype>(param) { constructor_sanity_check();}
+  explicit LarsSGDSolver(const string& param_file)
+      : SGDSolver<Dtype>(param_file) { constructor_sanity_check(); }
+
+ protected:
+  virtual void GetLocalRate(int param_id) const;
+  virtual void ComputeUpdateValue(int param_id, Dtype rate);
+  void constructor_sanity_check() {
+    CHECK_GE(this->param_.trust_coef(), 0)
+        << "trust_coef should lie between 0 and 1.";
+    CHECK_LT(this->param_.trust_coef(), 1)
+        << "trust_coef should lie between 0 and 1.";
+  }
+  virtual inline const char* type() const { return "LarsSGD"; }
+
+  DISABLE_COPY_AND_ASSIGN(LarsSGDSolver);      
+}
+
 }  // namespace caffe
 
 #endif  // CAFFE_SGD_SOLVERS_HPP_

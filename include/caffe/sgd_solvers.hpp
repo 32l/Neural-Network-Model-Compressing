@@ -26,6 +26,7 @@ class SGDSolver : public Solver<Dtype> {
  protected:
   void PreSolve();
   Dtype GetLearningRate();
+  virtual Dtype GetLocalRate(int param_id) { return Dtype(1.0); }
   virtual void ApplyUpdate();
   virtual void Normalize(int param_id);
   virtual void Regularize(int param_id);
@@ -156,7 +157,7 @@ class LarsSGDSolver: public SGDSolver<Dtype> {
       : SGDSolver<Dtype>(param_file) { constructor_sanity_check(); }
 
  protected:
-  virtual void GetLocalRate(int param_id) const;
+  virtual Dtype GetLocalRate(int param_id) const;
   virtual void ComputeUpdateValue(int param_id, Dtype rate);
   void constructor_sanity_check() {
     CHECK_GE(this->param_.trust_coef(), 0)
@@ -167,7 +168,7 @@ class LarsSGDSolver: public SGDSolver<Dtype> {
   virtual inline const char* type() const { return "LarsSGD"; }
 
   DISABLE_COPY_AND_ASSIGN(LarsSGDSolver);      
-}
+};
 
 }  // namespace caffe
 

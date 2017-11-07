@@ -1,24 +1,28 @@
 #include <string>
 #include <vector>
 
+#include "caffe/blob.hpp"
 #include "caffe/sgd_solvers.hpp"
 
 namespace caffe {
 
 #ifndef CPU_ONLY
 template <typename Dtype>
+void sgd_update_gpu(int N, Dtype *g, Dtype *h, Dtype momentum,
+                    Dtype local_rate);
+template <typename Dtype>
 void inq_lars_sgd_update_gpu(int N, const Dtype *mask, Dtype *g, Dtype *h, 
                     Dtype momentum, Dtype local_rate);
 #endif
 
 template<typename Dtype>
-Dtype SGDSolver<Dtype>::GetLocalRate(int param_id) const {
+Dtype LarsSGDSolver<Dtype>::GetLocalRate(int param_id) const {
   Dtype local_lr = 1.0;
   // if (this->param_.local_lr_auto()) {
-  shared_ptr<Blob> param = this->net_->learnable_params()[param_id];
+  Blob<Dtype>* param = this->net_->learnable_params()[param_id];
   const Dtype w_norm_ = std::sqrt(param->sumsq_data());
   const Dtype wgrad_norm_ = std::sqrt(param->sumsq_diff());
-  const Dytpe trust_coef_ = this->param_.trust_coef();
+  const Dtype trust_coef_ = this->param_.trust_coef();
   Dtype weight_decay = this->param_.weight_decay();
   if (w_norm_ > 0.F && wgrad_norm_ >  0.F) {
     local_lr = trust_coef_ * w_norm_ / (wgrad_norm_ + weight_decay * w_norm_);
@@ -42,7 +46,7 @@ Dtype SGDSolver<Dtype>::GetLocalRate(int param_id) const {
 
 
 template <typename Dtype>
-void SGDSolver<Dtype>::ComputeUpdateValue(int param_id, Dtype rate) {
+void LarsSGDSolver<Dtype>::ComputeUpdateValue(int param_id, Dtype rate) {
   const vector<Blob<Dtype> *> &net_params = this->net_->learnable_params();
   // const vector<float> &net_params_lr = this->net_->params_lr();
   Dtype momentum = this->param_.momentum();
@@ -64,7 +68,7 @@ void SGDSolver<Dtype>::ComputeUpdateValue(int param_id, Dtype rate) {
   case Caffe::CPU: {
     caffe_cpu_axpby(net_params[param_id]->count(), local_rate,
                     net_params[param_id]->cpu_diff(), momentum,
-                    history_[param_id]->mutable_cpu_data());
+                    this->history_[param_id]->mutable_cpu_data());
 
     /********** for neural network model compression **********/
     // if(std::find(mask_param_ids_.begin(), mask_param_ids_.end(),
@@ -76,16 +80,16 @@ void SGDSolver<Dtype>::ComputeUpdateValue(int param_id, Dtype rate) {
                net_params[param_id + blobs_to_skip]->count())
           << "Blobs' count should be the same with its Mask' count !!";
       // history_diff is an alias for history_
-      Dtype *history_diff = history_[param_id]->mutable_cpu_data();
+      Dtype *history_diff = this->history_[param_id]->mutable_cpu_data();
       const Dtype *mask = net_params[param_id + blobs_to_skip]->cpu_data();
-      caffe_copy(net_params[param_id]->count(), history_[param_id]->cpu_data(),
-                 temp_[param_id]->mutable_cpu_data());
-      caffe_mul(net_params[param_id]->count(), temp_[param_id]->cpu_data(),
+      caffe_copy(net_params[param_id]->count(), this->history_[param_id]->cpu_data(),
+                 this->temp_[param_id]->mutable_cpu_data());
+      caffe_mul(net_params[param_id]->count(), this->temp_[param_id]->cpu_data(),
                 mask, history_diff);
     }
     /**********************************************************/
 
-    caffe_copy(net_params[param_id]->count(), history_[param_id]->cpu_data(),
+    caffe_copy(net_params[param_id]->count(), this->history_[param_id]->cpu_data(),
                net_params[param_id]->mutable_cpu_diff());
     break;
   }
@@ -96,7 +100,7 @@ void SGDSolver<Dtype>::ComputeUpdateValue(int param_id, Dtype rate) {
       // normal SGD update
       sgd_update_gpu(net_params[param_id]->count(),
                      net_params[param_id]->mutable_gpu_diff(),
-                     history_[param_id]->mutable_gpu_data(), momentum,
+                     this->history_[param_id]->mutable_gpu_data(), momentum,
                      local_rate);
     } 
     /********** for neural network model compression **********/
@@ -106,7 +110,7 @@ void SGDSolver<Dtype>::ComputeUpdateValue(int param_id, Dtype rate) {
                          // inq mask blob
                          net_params[param_id + blobs_to_skip]->gpu_data(),
                          net_params[param_id]->mutable_gpu_diff(),
-                         history_[param_id]->mutable_gpu_data(), momentum,
+                         this->history_[param_id]->mutable_gpu_data(), momentum,
                          local_rate);
       // LOG(INFO) <<"right after inq_sgd_update_gpu";
     }

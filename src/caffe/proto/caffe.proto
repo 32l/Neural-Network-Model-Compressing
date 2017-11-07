@@ -221,7 +221,7 @@ message SolverParameter {
   optional float rms_decay = 38 [default = 0.99];
 
   // LarsSGD trust coefficient, range [0, 1)
-  optional float trust_coef = 42 [default = 0.9];
+  optional float trust_coef = 42 [default = 0.001];
 
   // If true, print information about the state of the net that may help with
   // debugging learning problems.

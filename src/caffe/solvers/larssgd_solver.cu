@@ -49,9 +49,10 @@ void inq_lars_sgd_update_gpu(int N, const Dtype *mask, Dtype *g, Dtype *h,
 
 template void sgd_update_gpu<float>(int, float *, float *, float, float);
 template void sgd_update_gpu<double>(int, double *, double *, double, double);
-template void inq_sgd_update_gpu<float>(int, const float *, float *, float *,
+template void inq_lars_sgd_update_gpu<float>(int, const float *, float *, float *,
                                         float, float);
-template void inq_sgd_update_gpu<double>(int, const double *, double *,
+template void inq_lars_sgd_update_gpu<double>(int, const double *, double *,
                                          double *, double, double);
 
 } // namespace caffe
+

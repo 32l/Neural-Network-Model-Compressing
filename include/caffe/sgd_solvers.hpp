@@ -160,10 +160,10 @@ class LarsSGDSolver: public SGDSolver<Dtype> {
   virtual Dtype GetLocalRate(int param_id) const;
   virtual void ComputeUpdateValue(int param_id, Dtype rate);
   void constructor_sanity_check() {
-    CHECK_GE(this->param_.trust_coef(), 0)
-        << "trust_coef should lie between 0 and 1.";
-    CHECK_LT(this->param_.trust_coef(), 1)
-        << "trust_coef should lie between 0 and 1.";
+    CHECK_GE(this->param_.local_gw_ratio(), 0)
+        << "local_gw_ratio should lie between 0 and 1.";
+    CHECK_LT(this->param_.local_gw_ratio(), 1)
+        << "local_gw_ratio should lie between 0 and 1.";
   }
   virtual inline const char* type() const { return "LarsSGD"; }
 

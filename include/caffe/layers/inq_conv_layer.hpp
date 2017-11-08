@@ -1,5 +1,5 @@
-#ifndef INQ_CONV_LAYER_HPP_
-#define INQ_CONV_LAYER_HPP_
+#ifndef CAFFE_INQ_CONV_LAYER_HPP_
+#define CAFFE_INQ_CONV_LAYER_HPP_
 
 #include <vector>
 #include "caffe/blob.hpp"

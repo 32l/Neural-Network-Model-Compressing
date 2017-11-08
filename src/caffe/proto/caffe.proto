@@ -98,7 +98,7 @@ message NetParameter {
 // NOTE
 // Update the next available ID when you add a new SolverParameter field.
 //
-// SolverParameter next available ID: 42 (last added: layer_wise_reduce)
+// SolverParameter next available ID: 46 (last added: local_gw_ratio)
 message SolverParameter {
   //////////////////////////////////////////////////////////////////////////////
   // Specifying the train and test networks
@@ -220,8 +220,8 @@ message SolverParameter {
   // MeanSquare(t) = rms_decay*MeanSquare(t-1) + (1-rms_decay)*SquareGradient(t)
   optional float rms_decay = 38 [default = 0.99];
 
-  // LarsSGD trust coefficient, range [0, 1)
-  optional float trust_coef = 42 [default = 0.001];
+  
+  // optional float trust_coef = 42 [default = 0.001];
 
   // If true, print information about the state of the net that may help with
   // debugging learning problems.
@@ -245,6 +245,16 @@ message SolverParameter {
 
   // Overlap compute and communication for data parallel training
   optional bool layer_wise_reduce = 41 [default = true];
+
+  // for warm-up training 
+  // iter: 0 ~ rampup_interval is warm-up training
+  optional int32 rampup_interval = 42 [default = 0];
+  optional float rampup_lr = 43 [default = 0.];
+
+  optional float min_lr = 44 [default = 0.];
+
+  // LarsSGD trust coefficient, range [0, 1)
+  optional float local_gw_ratio = 45 [default = 0.001];   
 }
 
 // A message that stores the solver snapshots

@@ -60,6 +60,20 @@ template <typename Dtype> Dtype SGDSolver<Dtype>::GetLearningRate() {
   } else {
     LOG(FATAL) << "Unknown learning rate policy: " << lr_policy;
   }
+
+  if (this->iter_ < this->param_.rampup_interval()) {
+    float alpha = float(this->iter_) / this->param_.rampup_interval();
+    float rampup_lr = 0.;
+    if (this->param_.has_rampup_lr()) {
+      rampup_lr = this->param_.rampup_lr();
+    }
+    // rate = rampup_lr + (this->param_.base_lr() - rampup_lr) * alpha;
+    rate = std::min(rate, rampup_lr + (rate - rampup_lr) * alpha);
+  }
+  float min_lr = this->param_.min_lr();
+  if (rate < min_lr) {
+    rate = min_lr;
+  }
   return rate;
 }
 

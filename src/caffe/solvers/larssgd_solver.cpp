@@ -22,10 +22,10 @@ Dtype LarsSGDSolver<Dtype>::GetLocalRate(int param_id) const {
   Blob<Dtype>* param = this->net_->learnable_params()[param_id];
   const Dtype w_norm_ = std::sqrt(param->sumsq_data());
   const Dtype wgrad_norm_ = std::sqrt(param->sumsq_diff());
-  const Dtype trust_coef_ = this->param_.trust_coef();
+  const Dtype gw_ratio = this->param_.local_gw_ratio();
   Dtype weight_decay = this->param_.weight_decay();
   if (w_norm_ > 0.F && wgrad_norm_ >  0.F) {
-    local_lr = trust_coef_ * w_norm_ / (wgrad_norm_ + weight_decay * w_norm_);
+    local_lr = gw_ratio * w_norm_ / (wgrad_norm_ + weight_decay * w_norm_);
   }
 /*
 #ifdef DEBUG

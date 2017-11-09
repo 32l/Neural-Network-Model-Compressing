@@ -786,7 +786,9 @@ void Net<Dtype>::CopyTrainedLayersFrom(const NetParameter& param) {
     if (strcmp(layers_[target_layer_id]->type(),"DNSInnerProduct") == 0 || 
       strcmp(layers_[target_layer_id]->type(),"DNSConvolution" ) == 0 ||
       strcmp(layers_[target_layer_id]->type(),"INQInnerProduct") == 0 ||
-      strcmp(layers_[target_layer_id]->type(),"INQConvolution") == 0 ) {
+      strcmp(layers_[target_layer_id]->type(),"INQConvolution") == 0 ||
+      strcmp(layers_[target_layer_id]->type(),"CInnerProduct") == 0 ||
+      strcmp(layers_[target_layer_id]->type(),"CConvolution") == 0 ) {
       if(target_blobs.size() > source_layer.blobs_size()) {
         for (int j = 0; j < source_layer.blobs_size(); ++j) {
           if (!target_blobs[j]->ShapeEquals(source_layer.blobs(j))) {

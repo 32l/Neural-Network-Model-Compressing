@@ -28,7 +28,7 @@ void weight_check(std::vector<std::vector<unsigned short> > wb, int layer_id){
   int size = v_s.size();
   int num_to_print = 10;
   char *space = "     ";
-  cout << "---- total short: " << size <<":"<< endl;
+  cout << "  ---- total short: " << size <<":"<< endl;
   if (size <= 2* num_to_print) {
     printf("%s", space);
     for(int i =0; i< size; ++i){
@@ -39,13 +39,13 @@ void weight_check(std::vector<std::vector<unsigned short> > wb, int layer_id){
     }
     printf("\n");
   } else {
-    cout << "---- first "<< num_to_print <<":" <<endl;
+    cout << "  ---- first "<< num_to_print <<":" <<endl;
     printf("%s", space);
     for ( int i =0; i< num_to_print; ++i){
       printf("%04x ", v_s[i]);
     }
     printf("\n     ......\n");
-    cout << "---- last " << num_to_print <<": "<< endl;
+    cout << "  ---- last " << num_to_print <<": "<< endl;
     printf("%s", space);
     int r_start = size - num_to_print;
     for (int i = r_start; i< size; ++i) {
@@ -71,7 +71,7 @@ std::map<unsigned char, float> get_code_book(const char min, const int bits) {
   // output code_book for checking
   map<unsigned char, float>::iterator iter;
   for (iter = code_book.begin(); iter != code_book.end(); ++iter) {
-    printf("---- %x, %f \n", iter->first, iter->second);
+    printf("  ---- %x, %f \n", iter->first, iter->second);
   }
   return code_book;
 }
@@ -88,18 +88,18 @@ void read_half_layer(ifstream &in, int layer_id, vector<char> &min_exp_w,
   shared_ptr<unsigned short> tmp_short_ptr;
   // read the minimum exp for this block of data
   in.read(&tmp_c, sizeof(char));
-  printf("-- min_exp = %d ...\n", tmp_c);
+  printf("  -- min_exp = %d ...\n", tmp_c);
   if (tmp_c > 0 ) {
     printf("Error: mim_exp might be too large! \n");
     exit(-1);
   }
   min_exp_w.push_back(tmp_c);
-  cout << "-- code_book:" << endl;
+  cout << "  -- code_book:" << endl;
   map<unsigned char, float> code_book;
   code_book = get_code_book(tmp_c, 4);
   // read the total number of data
   in.read(reinterpret_cast<char *>(&tmp_i), sizeof(int));
-  cout << "-- param count: " << tmp_i << endl;
+  cout << "  -- param count: " << tmp_i << endl;
   count_w.push_back(tmp_i);
 
   // conv layers' & squeeze 3x3 layers' weights
@@ -107,7 +107,7 @@ void read_half_layer(ifstream &in, int layer_id, vector<char> &min_exp_w,
   if (((layer_id - 1) % 3 == 0 || layer_id == 26) && PT == WEIGHT) {
     // read the short
     int short_len = get_wb_stored_num(count_w[layer_id - 1], SQUEEZE3x3);
-    cout << "-- 3x3 weights short_len = " << short_len << endl;
+    cout << "  -- 3x3 weights short_len = " << short_len << endl;
     tmp_short_ptr.reset(new unsigned short[short_len]);
     in.read(reinterpret_cast<char *>(tmp_short_ptr.get()),
             short_len * sizeof(unsigned short) / sizeof(char));
@@ -117,7 +117,7 @@ void read_half_layer(ifstream &in, int layer_id, vector<char> &min_exp_w,
       // weights_s[layer_id - 1].push_back(tmp_short_ptr.get()[i]);
     }
     weights_s.push_back(w_short_tmp);
-    cout<< "-- short formatted weights or bias: " << endl;
+    cout<< "  -- short formatted weights or bias: " << endl;
     weight_check(weights_s, layer_id);
     // store the real values to weights
 
@@ -143,7 +143,7 @@ void read_half_layer(ifstream &in, int layer_id, vector<char> &min_exp_w,
   } else { // normal layer or squeeze1x1 layer
     // read the short
     int short_len = get_wb_stored_num(count_w[layer_id - 1], OTHER);
-    cout << "-- normal short_len = " << short_len << endl;
+    cout << "  -- normal short_len = " << short_len << endl;
     // if (fabs(short_len) > 600000) exit(-1);
     unsigned short *tmp_short_buf =
         (unsigned short *)calloc(short_len, sizeof(unsigned short));
@@ -157,7 +157,7 @@ void read_half_layer(ifstream &in, int layer_id, vector<char> &min_exp_w,
     free(tmp_short_buf);
     weights_s.push_back(w_tmp);
  
-    cout << "-- short formated weights or bias: " << endl;
+    cout << "  -- short formated weights or bias: " << endl;
     weight_check(weights_s, layer_id);
     // store the real values to weights
     std::vector<float> w_float_tmp;
@@ -221,14 +221,15 @@ int main(int argc, char **argv) {
     layer_id++;
     cout << "=========================================================" << endl;
     cout << "layer_id = " << layer_id << endl;
-    cout << "weights:" << endl;
+    cout << "weights: { " << endl;
     // read the weights
     read_half_layer(in, layer_id, min_exp_w, count_w, weights_s, weights, WEIGHT);
+    cout << "} " << endl;
     cout << "----------------------------" << endl;
     // read the bias
-    cout << "bias: " << endl;
+    cout << "bias: { " << endl;
     read_half_layer(in, layer_id, min_exp_b, count_b, bias_s, bias, BIAS);
-    cout << endl;
+    cout << "} " << endl;
   }
 
   // close the file

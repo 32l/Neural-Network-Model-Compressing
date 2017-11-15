@@ -40,6 +40,7 @@ if len(sys.argv) != 4:
     print help
     sys.exit(-1)
 else:
+    # sys.argv[1] not used.
     src_proto = sys.argv[1] # <source_inq_net.prototxt
     src_model = sys.argv[2]  # <source_inq.caffemodel>
     output = sys.argv[3]   # <output.compact>
@@ -75,6 +76,9 @@ def save_to_file(wb_inq, param_name, num_kept_value, bits, param_t):
     if (max_exp - min_exp +1) > num_kept_value:
         print "Error: in layer [%s] weight: max_exp - min_exp + 1 > %d, max_exp: %d, min_exp: %d!"%(param_name, num_kept_value, max_exp, min_exp)
         sys.exit()
+
+    min_exp = max_exp - num_kept_value + 1
+
     positive_add_factor = num_kept_value * 2 - max_exp
     negative_add_factor = num_kept_value - 1 - max_exp
 

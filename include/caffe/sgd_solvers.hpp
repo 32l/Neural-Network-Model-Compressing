@@ -26,6 +26,7 @@ class SGDSolver : public Solver<Dtype> {
  protected:
   void PreSolve();
   Dtype GetLearningRate();
+  virtual Dtype GetLocalRate(int param_id) { return Dtype(1.0); }
   virtual void ApplyUpdate();
   virtual void Normalize(int param_id);
   virtual void Regularize(int param_id);
@@ -141,6 +142,32 @@ class AdamSolver : public SGDSolver<Dtype> {
   virtual void ComputeUpdateValue(int param_id, Dtype rate);
 
   DISABLE_COPY_AND_ASSIGN(AdamSolver);
+};
+
+
+/**
+ * @brief LarsSGDSolver, an algorithm for training large batch size NN.
+ */
+template <typename Dtype>
+class LarsSGDSolver: public SGDSolver<Dtype> {
+ public: 
+  explicit LarsSGDSolver(const SolverParameter& param)
+      : SGDSolver<Dtype>(param) { constructor_sanity_check();}
+  explicit LarsSGDSolver(const string& param_file)
+      : SGDSolver<Dtype>(param_file) { constructor_sanity_check(); }
+
+ protected:
+  virtual Dtype GetLocalRate(int param_id) const;
+  virtual void ComputeUpdateValue(int param_id, Dtype rate);
+  void constructor_sanity_check() {
+    CHECK_GE(this->param_.local_gw_ratio(), 0)
+        << "local_gw_ratio should lie between 0 and 1.";
+    CHECK_LT(this->param_.local_gw_ratio(), 1)
+        << "local_gw_ratio should lie between 0 and 1.";
+  }
+  virtual inline const char* type() const { return "LarsSGD"; }
+
+  DISABLE_COPY_AND_ASSIGN(LarsSGDSolver);      
 };
 
 }  // namespace caffe

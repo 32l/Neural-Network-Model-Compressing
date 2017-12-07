@@ -1,5 +1,9 @@
-#ifndef CAFFE_DNS_INNER_PRODUCT_LAYER_HPP_
-#define CAFFE_DNS_INNER_PRODUCT_LAYER_HPP_
+/*
+the same with DNS convolution code
+*/
+
+#ifndef CAFFE_CINNER_PRODUCT_LAYER_HPP_
+#define CAFFE_CINNER_PRODUCT_LAYER_HPP_
 
 #include <vector>
 
@@ -9,22 +13,22 @@
 
 namespace caffe{
 /**
- * @brief The DNS InnerProduct layer, also known as a DNS 
+ * @brief The C InnerProduct layer, also known as a C 
  *  "fully-connected" layer
  *
  * TODO(dox): thorough documentation for Forward, Backward, and proto params.
  */
 template <typename Dtype>
-class DNSInnerProductLayer : public Layer<Dtype> {
+class CInnerProductLayer : public Layer<Dtype> {
  public:
-  explicit DNSInnerProductLayer(const LayerParameter& param)
+  explicit CInnerProductLayer(const LayerParameter& param)
       : Layer<Dtype>(param) {}
   virtual void LayerSetUp(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top);
   virtual void Reshape(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top);
 
-  virtual inline const char* type() const { return "DNSInnerProduct"; }
+  virtual inline const char* type() const { return "CInnerProduct"; }
   virtual inline int ExactNumBottomBlobs() const { return 1; }
   virtual inline int ExactNumTopBlobs() const { return 1; }
 
@@ -58,4 +62,4 @@ class DNSInnerProductLayer : public Layer<Dtype> {
 
 }   // namespace caffe
 
-#endif  // CAFFE_DNSINNER_PRODUCT_LAYER_HPP_
+#endif  // CAFFE_CINNER_PRODUCT_LAYER_HPP_

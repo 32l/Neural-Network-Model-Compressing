@@ -1,7 +1,11 @@
+/*
+the same with DNS convolution code
+*/
+
 #include <vector>
 
 #include "caffe/filler.hpp"
-#include "caffe/layers/dns_inner_product_layer.hpp"
+#include "caffe/layers/cinner_product_layer.hpp"
 #include "caffe/util/math_functions.hpp"
 
 namespace caffe {
@@ -162,7 +166,7 @@ void CCNZeroCalc(const int n, const Dtype *mask, unsigned int *ncount) {
 }
 
 template <typename Dtype>
-void DNSInnerProductLayer<Dtype>::Forward_gpu(
+void CInnerProductLayer<Dtype>::Forward_gpu(
     const vector<Blob<Dtype> *> &bottom, const vector<Blob<Dtype> *> &top) {
 
   const Dtype *weight = this->blobs_[0]->gpu_data();
@@ -259,7 +263,7 @@ void DNSInnerProductLayer<Dtype>::Forward_gpu(
 }
 
 template <typename Dtype>
-void DNSInnerProductLayer<Dtype>::Backward_gpu(
+void CInnerProductLayer<Dtype>::Backward_gpu(
     const vector<Blob<Dtype> *> &top, const vector<bool> &propagate_down,
     const vector<Blob<Dtype> *> &bottom) {
   const Dtype *top_diff = top[0]->gpu_diff();
@@ -311,6 +315,6 @@ void DNSInnerProductLayer<Dtype>::Backward_gpu(
   }
 }
 
-INSTANTIATE_LAYER_GPU_FUNCS(DNSInnerProductLayer);
+INSTANTIATE_LAYER_GPU_FUNCS(CInnerProductLayer);
 
 } // namespace caffe

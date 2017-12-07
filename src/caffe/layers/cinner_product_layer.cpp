@@ -1,13 +1,17 @@
+/*
+the same with DNS convolution code
+*/
+
 #include <vector>
 
 #include "caffe/filler.hpp"
-#include "caffe/layers/dns_inner_product_layer.hpp"
+#include "caffe/layers/cinner_product_layer.hpp"
 #include "caffe/util/math_functions.hpp"
 
 namespace caffe {
 
 template <typename Dtype>
-void DNSInnerProductLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
+void CInnerProductLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {
   const int num_output = this->layer_param_.inner_product_param().num_output();
   bias_term_ = this->layer_param_.inner_product_param().bias_term();
@@ -54,19 +58,19 @@ void DNSInnerProductLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
   this->param_propagate_down_.resize(this->blobs_.size(), true);
   
   /********** for neural network model compression **********/
-  DNSInnerProductParameter dns_inner_param = 
-    this->layer_param_.dns_inner_product_param();
+  CInnerProductParameter cinner_param = 
+    this->layer_param_.cinner_product_param();
   
   if(this->blobs_.size()==2 && (this->bias_term_)){
     this->blobs_.resize(4);
     // Intialize and fill the weight mask & bias mask
     this->blobs_[2].reset(new Blob<Dtype>(this->blobs_[0]->shape()));
     shared_ptr<Filler<Dtype> > weight_mask_filler(GetFiller<Dtype>(
-        dns_inner_param.weight_mask_filler()));
+        cinner_param.weight_mask_filler()));
     weight_mask_filler->Fill(this->blobs_[2].get());
     this->blobs_[3].reset(new Blob<Dtype>(this->blobs_[1]->shape()));
     shared_ptr<Filler<Dtype> > bias_mask_filler(GetFiller<Dtype>(
-        dns_inner_param.bias_mask_filler()));
+        cinner_param.bias_mask_filler()));
     bias_mask_filler->Fill(this->blobs_[3].get());    
   }  
   else if(this->blobs_.size()==1 && (!this->bias_term_)){
@@ -74,7 +78,7 @@ void DNSInnerProductLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
     // Intialize and fill the weightmask
     this->blobs_[1].reset(new Blob<Dtype>(this->blobs_[0]->shape()));
     shared_ptr<Filler<Dtype> > bias_mask_filler(GetFiller<Dtype>(
-        dns_inner_param.bias_mask_filler()));
+        cinner_param.bias_mask_filler()));
     bias_mask_filler->Fill(this->blobs_[1].get());      
   }   
    
@@ -85,15 +89,15 @@ void DNSInnerProductLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
   // Intialize the hyper-parameters
   this->std_ = 0;
   this->mu_ = 0;  
-  this->gamma_ = dns_inner_param.gamma(); 
-  this->power_ = dns_inner_param.power();
-  this->c_rate_ = dns_inner_param.c_rate();  
-  this->iter_stop_ = dns_inner_param.iter_stop();    
+  this->gamma_ = cinner_param.gamma(); 
+  this->power_ = cinner_param.power();
+  this->c_rate_ = cinner_param.c_rate();  
+  this->iter_stop_ = cinner_param.iter_stop();    
   /**********************************************************/
 }
 
 template <typename Dtype>
-void DNSInnerProductLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
+void CInnerProductLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {
   // Figure out the dimensions
   const int axis = bottom[0]->CanonicalAxisIndex(
@@ -119,7 +123,7 @@ void DNSInnerProductLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
 }
 
 template <typename Dtype>
-void DNSInnerProductLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
+void CInnerProductLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
     const vector<Blob<Dtype>*>& top) {
 
   const Dtype* weight = this->blobs_[0]->cpu_data();    
@@ -208,7 +212,7 @@ void DNSInnerProductLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom
 }
 
 template <typename Dtype>
-void DNSInnerProductLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
+void CInnerProductLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
     const vector<bool>& propagate_down,
     const vector<Blob<Dtype>*>& bottom) {  
   // Use the masked weight to propagate back
@@ -261,10 +265,10 @@ void DNSInnerProductLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
 }
 
 #ifdef CPU_ONLY
-STUB_GPU(DNSInnerProductLayer);
+STUB_GPU(CInnerProductLayer);
 #endif
 
-INSTANTIATE_CLASS(DNSInnerProductLayer);
-REGISTER_LAYER_CLASS(DNSInnerProduct);
+INSTANTIATE_CLASS(CInnerProductLayer);
+REGISTER_LAYER_CLASS(CInnerProduct);
 
 }  // namespace caffe

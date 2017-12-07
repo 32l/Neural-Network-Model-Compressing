@@ -1,8 +1,10 @@
+/*
+the same with DNS convolution code
+*/
+
 #include <vector>
 
-#include "caffe/filler.hpp"
-#include "caffe/layers/dns_inner_product_layer.hpp"
-#include "caffe/util/math_functions.hpp"
+#include "caffe/layers/cconv_layer.hpp"
 
 namespace caffe {
 
@@ -162,7 +164,7 @@ void CCNZeroCalc(const int n, const Dtype *mask, unsigned int *ncount) {
 }
 
 template <typename Dtype>
-void DNSInnerProductLayer<Dtype>::Forward_gpu(
+void CConvolutionLayer<Dtype>::Forward_gpu(
     const vector<Blob<Dtype> *> &bottom, const vector<Blob<Dtype> *> &top) {
 
   const Dtype *weight = this->blobs_[0]->gpu_data();
@@ -204,6 +206,7 @@ void DNSInnerProductLayer<Dtype>::Forward_gpu(
                 << "(" << Dtype(ncount) / (this->blobs_[0]->count() + this->blobs_[1]->count())*100 << "%)"
                 << "\n";
     }
+
     // Calculate the weight mask and bias mask with probability
     // LOG(INFO) << rand()<<"  "<<rand()<<"  "<<rand()<<"  "<<rand()<<"
     // "<<rand()<< "\n";
@@ -239,78 +242,67 @@ void DNSInnerProductLayer<Dtype>::Forward_gpu(
   }
 
   // Forward calculation with (masked) weight and bias
-  const Dtype *bottom_data = bottom[0]->gpu_data();
-  Dtype *top_data = top[0]->mutable_gpu_data();
-  if (M_ == 1) {
-    caffe_gpu_gemv<Dtype>(CblasNoTrans, N_, K_, (Dtype)1., weightTmp,
-                          bottom_data, (Dtype)0., top_data);
-    if (bias_term_)
-      caffe_gpu_axpy<Dtype>(N_, bias_multiplier_.cpu_data()[0], biasTmp,
-                            top_data);
-  } else {
-    caffe_gpu_gemm<Dtype>(CblasNoTrans, transpose_ ? CblasNoTrans : CblasTrans,
-                          M_, N_, K_, (Dtype)1., bottom_data, weightTmp,
-                          (Dtype)0., top_data);
-    if (bias_term_)
-      caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, M_, N_, 1, (Dtype)1.,
-                            bias_multiplier_.gpu_data(), biasTmp, (Dtype)1.,
-                            top_data);
+  for (int i = 0; i < bottom.size(); ++i) {
+    const Dtype *bottom_data = bottom[i]->gpu_data();
+    Dtype *top_data = top[i]->mutable_gpu_data();
+    for (int n = 0; n < this->num_; ++n) {
+      this->forward_gpu_gemm(bottom_data + n * this->bottom_dim_, weightTmp,
+                             top_data + n * this->top_dim_);
+      if (this->bias_term_) {
+        this->forward_gpu_bias(top_data + n * this->top_dim_, biasTmp);
+      }
+    }
   }
 }
 
 template <typename Dtype>
-void DNSInnerProductLayer<Dtype>::Backward_gpu(
+void CConvolutionLayer<Dtype>::Backward_gpu(
     const vector<Blob<Dtype> *> &top, const vector<bool> &propagate_down,
     const vector<Blob<Dtype> *> &bottom) {
-  const Dtype *top_diff = top[0]->gpu_diff();
-  if (this->param_propagate_down_[0]) {
-    const Dtype *weightMask = this->blobs_[2]->gpu_data();
-    Dtype *weight_diff = this->blobs_[0]->mutable_gpu_diff();
-    const Dtype *bottom_data = bottom[0]->gpu_data();
-    // Gradient with respect to weight
+  const Dtype *weightTmp = this->weight_tmp_.gpu_data();
+  const Dtype *weightMask = this->blobs_[2]->gpu_data();
+  Dtype *weight_diff = this->blobs_[0]->mutable_gpu_diff();
+  for (int i = 0; i < top.size(); ++i) {
+    const Dtype *top_diff = top[i]->gpu_diff();
+    // Bias gradient, if necessary.
+    if (this->bias_term_ && this->param_propagate_down_[1]) {
+      const Dtype *biasMask = this->blobs_[3]->gpu_data();
+      Dtype *bias_diff = this->blobs_[1]->mutable_gpu_diff();
 
-    CCMaskApply<Dtype><<<CAFFE_GET_BLOCKS(this->blobs_[2]->count()),
-                         CAFFE_CUDA_NUM_THREADS>>>(
-        this->blobs_[2]->count(), weight_diff, weightMask, weight_diff);
-    CUDA_POST_KERNEL_CHECK;
+      CCMaskApply<Dtype><<<CAFFE_GET_BLOCKS(this->blobs_[3]->count()),
+                           CAFFE_CUDA_NUM_THREADS>>>(
+          this->blobs_[3]->count(), bias_diff, biasMask, bias_diff);
+      CUDA_POST_KERNEL_CHECK;
 
-    if (transpose_) {
-      caffe_gpu_gemm<Dtype>(CblasTrans, CblasNoTrans, K_, N_, M_, (Dtype)1.,
-                            bottom_data, top_diff, (Dtype)1.,
-                            this->blobs_[0]->mutable_gpu_diff());
-    } else {
-      caffe_gpu_gemm<Dtype>(CblasTrans, CblasNoTrans, N_, K_, M_, (Dtype)1.,
-                            top_diff, bottom_data, (Dtype)1.,
-                            this->blobs_[0]->mutable_gpu_diff());
+      for (int n = 0; n < this->num_; ++n) {
+        this->backward_gpu_bias(bias_diff, top_diff + n * this->top_dim_);
+      }
     }
-  }
-  if (bias_term_ && this->param_propagate_down_[1]) {
-    const Dtype *biasMask = this->blobs_[3]->gpu_data();
-    Dtype *bias_diff = this->blobs_[1]->mutable_gpu_diff();
-    // Gradient with respect to bias
-    CCMaskApply<Dtype><<<CAFFE_GET_BLOCKS(this->blobs_[3]->count()),
-                         CAFFE_CUDA_NUM_THREADS>>>(
-        this->blobs_[3]->count(), bias_diff, biasMask, bias_diff);
-    CUDA_POST_KERNEL_CHECK;
+    if (this->param_propagate_down_[0] || propagate_down[i]) {
+      const Dtype *bottom_data = bottom[i]->gpu_data();
+      Dtype *bottom_diff = bottom[i]->mutable_gpu_diff();
 
-    caffe_gpu_gemv<Dtype>(CblasTrans, M_, N_, (Dtype)1., top_diff,
-                          bias_multiplier_.gpu_data(), (Dtype)1., bias_diff);
-  }
-  if (propagate_down[0]) {
-    const Dtype *weightTmp = this->weight_tmp_.gpu_data();
-    // Gradient with respect to bottom data
-    if (transpose_) {
-      caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasTrans, M_, K_, N_, (Dtype)1.,
-                            top_diff, weightTmp, (Dtype)0.,
-                            bottom[0]->mutable_gpu_diff());
-    } else {
-      caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, M_, K_, N_, (Dtype)1.,
-                            top_diff, weightTmp, (Dtype)0.,
-                            bottom[0]->mutable_gpu_diff());
+      CCMaskApply<Dtype><<<CAFFE_GET_BLOCKS(this->blobs_[2]->count()),
+                           CAFFE_CUDA_NUM_THREADS>>>(
+          this->blobs_[2]->count(), weight_diff, weightMask, weight_diff);
+      CUDA_POST_KERNEL_CHECK;
+
+      for (int n = 0; n < this->num_; ++n) {
+        // gradient w.r.t. weight. Note that we will accumulate diffs.
+        if (this->param_propagate_down_[0]) {
+          this->weight_gpu_gemm(bottom_data + n * this->bottom_dim_,
+                                top_diff + n * this->top_dim_, weight_diff);
+        }
+        // gradient w.r.t. bottom data, if necessary.
+        if (propagate_down[i]) {
+          this->backward_gpu_gemm(top_diff + n * this->top_dim_, weightTmp,
+                                  bottom_diff + n * this->bottom_dim_);
+        }
+      }
     }
   }
 }
 
-INSTANTIATE_LAYER_GPU_FUNCS(DNSInnerProductLayer);
+INSTANTIATE_LAYER_GPU_FUNCS(CConvolutionLayer);
 
 } // namespace caffe

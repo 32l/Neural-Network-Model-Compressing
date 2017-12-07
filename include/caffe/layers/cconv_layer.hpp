@@ -1,5 +1,9 @@
-#ifndef CAFFE_DNS_CONV_LAYER_HPP_
-#define CAFFE_DNS_CONV_LAYER_HPP_
+/*
+the same with DNS convolution code
+*/
+
+#ifndef CAFFE_CCONV_LAYER_HPP_
+#define CAFFE_CCONV_LAYER_HPP_
 
 #include <vector>
 
@@ -17,14 +21,14 @@ namespace caffe {
  */
 
 template <typename Dtype>
-class DNSConvolutionLayer : public BaseConvolutionLayer<Dtype> {
+class CConvolutionLayer : public BaseConvolutionLayer<Dtype> {
  public:
 
-  explicit DNSConvolutionLayer(const LayerParameter& param)
+  explicit CConvolutionLayer(const LayerParameter& param)
       : BaseConvolutionLayer<Dtype>(param) {}
   virtual void LayerSetUp(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top);
-  virtual inline const char* type() const { return "DNSConvolution"; }
+  virtual inline const char* type() const { return "CConvolution"; }
 
  protected:
   virtual void Forward_cpu(const vector<Blob<Dtype>*>& bottom,
@@ -51,5 +55,5 @@ class DNSConvolutionLayer : public BaseConvolutionLayer<Dtype> {
 
 }   // namespace caffe
 
-#endif // CAFFE_DNSCONV_LAYER_HPP_
+#endif // CAFFE_CCONV_LAYER_HPP_
  

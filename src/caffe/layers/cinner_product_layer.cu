@@ -198,18 +198,18 @@ void CInnerProductLayer<Dtype>::Forward_gpu(
       this->std_ /= ncount;
       this->std_ = sqrt(std_);
       // output the percentage of kept parameters.
-      LOG(INFO) << "mu_:" << mu_ << " "
-                << "std_:" << std_ << " " << nz_w << "/"
+      LOG_IF(INFO, Caffe::root_solver()) << "mu_:" << mu_ << " "
+                << "std_:" << std_ << ", kept: weight" << nz_w << "/"
                 << this->blobs_[0]->count() << "("
-                << Dtype(nz_w) / this->blobs_[0]->count() << ")"
+                << Dtype(nz_w) / this->blobs_[0]->count()*100 << "%), bias:"
                 << " " << nz_b << "/" << this->blobs_[1]->count() << "("
-                << Dtype(nz_b) / this->blobs_[1]->count() << ")"
+                << Dtype(nz_b) / this->blobs_[1]->count()*100 << "%), total"
                 << " " << ncount << "/"
                 << this->blobs_[0]->count() + this->blobs_[1]->count() << "("
-                << Dtype(ncount) /
-                       (this->blobs_[0]->count() + this->blobs_[1]->count())
-                << ")"
+                << Dtype(ncount) / (this->blobs_[0]->count() + this->blobs_[1]->count())*100
+                << "%)"
                 << "\n";
+
     }
     // Calculate the weight mask and bias mask with probability
     // LOG(INFO) << rand()<<"  "<<rand()<<"  "<<rand()<<"  "<<rand()<<"

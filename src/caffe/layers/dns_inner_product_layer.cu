@@ -304,11 +304,11 @@ void DNSInnerProductLayer<Dtype>::Backward_gpu(
     // Gradient with respect to bottom data
     if (transpose_) {
       caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasTrans, M_, K_, N_, (Dtype)1.,
-                            top_diff, this->blobs_[0]->gpu_data(), (Dtype)0.,
+                            top_diff, weightTmp, (Dtype)0.,
                             bottom[0]->mutable_gpu_diff());
     } else {
       caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, M_, K_, N_, (Dtype)1.,
-                            top_diff, this->blobs_[0]->gpu_data(), (Dtype)0.,
+                            top_diff, weightTmp, (Dtype)0.,
                             bottom[0]->mutable_gpu_diff());
     }
   }

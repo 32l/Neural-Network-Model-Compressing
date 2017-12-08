@@ -11,18 +11,18 @@ void DNSConvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
   BaseConvolutionLayer <Dtype>::LayerSetUp(bottom, top); 
   
   /********** for neural network model compression **********/
-  DNSConvolutionParameter dsn_conv_param = this->layer_param_.dns_convolution_param();
+  DNSConvolutionParameter dns_conv_param = this->layer_param_.dns_convolution_param();
   
   if(this->blobs_.size()==2 && (this->bias_term_)){
     this->blobs_.resize(4);
     // Intialize and fill the weight mask & bias mask
     this->blobs_[2].reset(new Blob<Dtype>(this->blobs_[0]->shape()));
     shared_ptr<Filler<Dtype> > weight_mask_filler(GetFiller<Dtype>(
-        dsn_conv_param.weight_mask_filler()));
+        dns_conv_param.weight_mask_filler()));
     weight_mask_filler->Fill(this->blobs_[2].get());
     this->blobs_[3].reset(new Blob<Dtype>(this->blobs_[1]->shape()));
     shared_ptr<Filler<Dtype> > bias_mask_filler(GetFiller<Dtype>(
-        dsn_conv_param.bias_mask_filler()));
+        dns_conv_param.bias_mask_filler()));
     bias_mask_filler->Fill(this->blobs_[3].get());    
   }  
   else if(this->blobs_.size()==1 && (!this->bias_term_)){
@@ -30,7 +30,7 @@ void DNSConvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
     // Intialize and fill the weight mask
     this->blobs_[1].reset(new Blob<Dtype>(this->blobs_[0]->shape()));
     shared_ptr<Filler<Dtype> > bias_mask_filler(GetFiller<Dtype>(
-        dsn_conv_param.bias_mask_filler()));
+        dns_conv_param.bias_mask_filler()));
     bias_mask_filler->Fill(this->blobs_[1].get());      
   }  
   
@@ -41,10 +41,12 @@ void DNSConvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
   // Intialize the hyper-parameters
   this->std_ = 0;
   this->mu_ = 0;   
-  this->gamma_ = dsn_conv_param.gamma(); 
-  this->power_ = dsn_conv_param.power();
-  this->c_rate_ = dsn_conv_param.c_rate();  
-  this->iter_stop_ = dsn_conv_param.iter_stop();
+  this->gamma_ = dns_conv_param.gamma(); 
+  this->power_ = dns_conv_param.power();
+  this->c_rate_ = dns_conv_param.c_rate(); 
+  this->alpha_low_ = dns_conv_param.alpha_low();
+  this->alpha_high_ = dns_conv_param.alhpa_high();
+  this->iter_stop_ = dns_conv_param.iter_stop();
   /**********************************************************/
 }
 
@@ -117,16 +119,16 @@ void DNSConvolutionLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
     Dtype r_ = static_cast<Dtype>(rand())/static_cast<Dtype>(RAND_MAX);
     if (pow(1+(this->gamma_)*(this->iter_),-(this->power_))>r_ && (this->iter_)<(this->iter_stop_)) {  
       for (unsigned int k = 0;k < this->blobs_[0]->count(); ++k) {
-        if (weightMask[k]==1 && fabs(weight[k]) <= 0.9 * std::max(mu_+c_rate_*std_,Dtype(0))) 
+        if (weightMask[k]==1 && fabs(weight[k]) <= this->alpha_low_ * std::max(mu_+c_rate_*std_,Dtype(0))) 
           weightMask[k] = 0;
-        else if (weightMask[k]==0 && fabs(weight[k])>1.1*std::max(mu_+c_rate_*std_,Dtype(0)))
+        else if (weightMask[k]==0 && fabs(weight[k])>this->alpha_high_*std::max(mu_+c_rate_*std_,Dtype(0)))
           weightMask[k] = 1;
       } 
       if (this->bias_term_) {       
         for (unsigned int k = 0;k < this->blobs_[1]->count(); ++k) {
-          if (biasMask[k]==1 && fabs(bias[k])<=0.9*std::max(mu_+c_rate_*std_,Dtype(0))) 
+          if (biasMask[k]==1 && fabs(bias[k])<=this->alpha_low_*std::max(mu_+c_rate_*std_,Dtype(0))) 
             biasMask[k] = 0;
-          else if (biasMask[k]==0 && fabs(bias[k])>1.1*std::max(mu_+c_rate_*std_,Dtype(0)))
+          else if (biasMask[k]==0 && fabs(bias[k])>this->alpha_high_*std::max(mu_+c_rate_*std_,Dtype(0)))
             biasMask[k] = 1;
         } 
       } 

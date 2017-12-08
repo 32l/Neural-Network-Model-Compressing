@@ -53,6 +53,8 @@ class DNSInnerProductLayer : public Layer<Dtype> {
   Dtype gamma_;
   Dtype power_; 
   Dtype c_rate_;  
+  Dtype alpha_low_;
+  Dtype alpha_high_;
   int iter_stop_;
 };
 

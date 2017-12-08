@@ -92,13 +92,13 @@ __global__ void CCNzeroCollect(const int n, const Dtype *mask,
 
 template <typename Dtype>
 __global__ void CCMaskCalc(const int n, const Dtype *wb, Dtype *mask, Dtype mu_,
-                           Dtype std_, Dtype r_) {
+                           Dtype std_, Dtype r_, Dtype low_, Dtype high_) {
   CUDA_KERNEL_LOOP(index, n) {
     if (mask[index] == 1 &&
-        fabs(wb[index]) <= 0.9 * max(mu_ + r_ * std_, Dtype(0)))
+        fabs(wb[index]) <= low_ * max(mu_ + r_ * std_, Dtype(0)))
       mask[index] = 0;
     else if (mask[index] == 0 &&
-             fabs(wb[index]) > 1.1 * max(mu_ + r_ * std_, Dtype(0)))
+             fabs(wb[index]) > high_ * max(mu_ + r_ * std_, Dtype(0)))
       mask[index] = 1;
   }
 }
@@ -218,13 +218,13 @@ void CInnerProductLayer<Dtype>::Forward_gpu(
       CCMaskCalc<Dtype><<<CAFFE_GET_BLOCKS(this->blobs_[0]->count()),
                           CAFFE_CUDA_NUM_THREADS>>>(
           this->blobs_[0]->count(), weight, weightMask, this->mu_, this->std_,
-          this->c_rate_);
+          this->c_rate_, this->alpha_low_, this->alpha_high_);
       CUDA_POST_KERNEL_CHECK;
       if (this->bias_term_) {
         CCMaskCalc<Dtype><<<CAFFE_GET_BLOCKS(this->blobs_[1]->count()),
                             CAFFE_CUDA_NUM_THREADS>>>(
             this->blobs_[1]->count(), bias, biasMask, this->mu_, this->std_,
-            this->c_rate_);
+            this->c_rate_, this->alpha_low_, this->alpha_high_);
         CUDA_POST_KERNEL_CHECK;
       }
     }

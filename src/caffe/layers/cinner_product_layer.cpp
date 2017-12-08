@@ -92,6 +92,8 @@ void CInnerProductLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
   this->gamma_ = cinner_param.gamma(); 
   this->power_ = cinner_param.power();
   this->c_rate_ = cinner_param.c_rate();  
+  this->alpha_low_ = cinner_param.alpha_low();
+  this->alpha_high_ = cinner_param.alpha_high();
   this->iter_stop_ = cinner_param.iter_stop();    
   /**********************************************************/
 }
@@ -174,16 +176,16 @@ void CInnerProductLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
     Dtype r_ = static_cast<Dtype>(rand())/static_cast<Dtype>(RAND_MAX);
     if (pow(1+(this->gamma_)*(this->iter_),-(this->power_))>r_ && (this->iter_)<(this->iter_stop_)) {  
       for (unsigned int k = 0;k < this->blobs_[0]->count(); ++k) {
-        if (weightMask[k]==1 && fabs(weight[k])<=0.9*std::max(mu_+c_rate_*std_,Dtype(0)))
+        if (weightMask[k]==1 && fabs(weight[k])<=this->alpha_low_*std::max(mu_+c_rate_*std_,Dtype(0)))
           weightMask[k] = 0;
-        else if (weightMask[k]==0 && fabs(weight[k])>1.1*std::max(mu_+c_rate_*std_,Dtype(0)))
+        else if (weightMask[k]==0 && fabs(weight[k])>this->alpha_high_*std::max(mu_+c_rate_*std_,Dtype(0)))
           weightMask[k] = 1;
       } 
       if (this->bias_term_) {       
         for (unsigned int k = 0;k < this->blobs_[1]->count(); ++k) {
-          if (biasMask[k]==1 && fabs(bias[k])<=0.9*std::max(mu_+c_rate_*std_,Dtype(0)))
+          if (biasMask[k]==1 && fabs(bias[k])<=this->alpha_low_*std::max(mu_+c_rate_*std_,Dtype(0)))
             biasMask[k] = 0;
-          else if (biasMask[k]==0 && fabs(bias[k])>1.1*std::max(mu_+c_rate_*std_,Dtype(0)))
+          else if (biasMask[k]==0 && fabs(bias[k])>this->alpha_high_*std::max(mu_+c_rate_*std_,Dtype(0)))
             biasMask[k] = 1;
         }    
       } 

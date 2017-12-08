@@ -4,7 +4,7 @@ Reproduction &amp; modification of some interesting model compressing methods in
 
 The code in this repo is based on the master branch of [BVLC/caffe][2] (2017/08/28)
 
-Feature:
+**Features:**
 
 - DNS fine-tuning (pruning)
 - INQ fine-tuning (quantization)
@@ -16,7 +16,7 @@ Feature:
 ------------
 
 
-## 1. Dynamic Network Surgery (DNS)
+## 1 Dynamic Network Surgery (DNS)
 
 Almost the same with [Guo's version][1].
 
@@ -260,7 +260,7 @@ layer {
 
 
 
-### 3.3 Model Compression
+### 3.3 Model Compression Scripts
 
  - this part is usually highly customized since you may want to use different format to store your model.
 

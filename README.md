@@ -1,17 +1,26 @@
 # Neural-Network-Model-Compressing
 
-Reproduction &amp; modification of some interesting model compressing methods in Caffe framework, including Dynamic-Network-Surgery (DNS) and Incremental Network Quantization (INQ). Will include more ...
+Reproduction &amp; modification of some interesting model compressing methods in Caffe framework, including Dynamic-Network-Surgery (DNS) and Incremental Network Quantization (INQ). 
 
-------------
+The code in this repo is based on the master branch of [BVLC/caffe][2] (2017/08/28)
+
+**Features:**
+
+- DNS fine-tuning (pruning)
+- INQ fine-tuning (quantization)
+- Support warm-up training
+- Python scripts for Caffe model checking / model conversion / model comprssion
+
+
 [TOC]
 ------------
 
 
-## Dynamic Network Surgery (DNS)
+## 1 Dynamic Network Surgery (DNS)
 
 Almost the same with [Guo's version][1].
 
-### DNS usage example
+### 1.1 DNS usage example
 
 -  Step 1. Change the layer type in the prototxt file as the following table:
 
@@ -68,7 +77,7 @@ layer {
 }
 ```
 
-### DNS Notes 
+### 1.2 DNS Notes 
   
   DNS param | Description
   :---: | ---
@@ -79,9 +88,9 @@ layer {
   `weight_mask_filler` & `bias_mask_filler` | must be `"constant"` `"1"`
 
 
-## Incremental Network Quantization (INQ)
+## 2 Incremental Network Quantization (INQ)
 
-### INQ usage example
+### 2.1 INQ usage example
 
 -  Step 1. Change the layer type in the prototxt file as the following table:
 
@@ -132,7 +141,7 @@ layer {
 ```
 
 
-### INQ Notes 
+### 2.2 INQ Notes 
   
   Since INQ requires to quantize the parameters 
 
@@ -168,17 +177,33 @@ layer {
   If you would like to apply INQ to a DNS-pruned model, a model conversion must be done before you run the INQ fine-tuning. Once you get the raw INQ model, it safe to start INQ fine-tuning on that model. See more details about the conversion scripts `model2INQ_raw.py`.
 
 
-## Model Conversion Scripts & Compression Scripts
+## 3 Python Scripts
 
 ---
-**Note**:  All of the scripts' usage can be checked by running :
-``` shell
-python script_name.py
-```
-In case I did not write any description about a script, you can do the above.
+**Note**
+
+- All the python scripts locate in the folder `compression_scripts`, and the usage of all scripts can be checked by running :
+  ``` shell
+  python script_name.py
+  ```
+  In case I did not write any description about a script, you can   do the above.
+>
+
+- Make sure you have set **`CAFFE_ROOT`** environment variable in you system (set the `CAFFE_ROOT` as your caffe directory), or just type 
+  ``` shell
+  export CAFFE_ROOT=dir/to/your/caffe_dir
+  ```
+  every time you want to use these scripts.
+>
+
+- Make sure you have compiled pycaffe by running the following command:
+  ``` shell
+  make pycaffe
+  ```
 
 ---
 
+### 3.1 Model Conversion Scripts
 
 - **`dns_to_normal.py`**
 
@@ -223,6 +248,23 @@ In case I did not write any description about a script, you can do the above.
   python compression_scripts/model2INQ_raw.py
   ```
 
+### 3.2 Model Checking Scripts
+
+- `parse_model.py`
+  > This script is used for converting binary caffemodel (*.caffemodel) to txt file, so that you can read the actual data in caffemodel. Can be used for any caffe model (the normal ones, DNS ones, INQ ones, ...)
+
+  Usage:
+  ``` shell
+  python compression_scripts/parse_model.py <binary.caffemodel> <output.txt>
+  ```
+
+
+
+### 3.3 Model Compression Scripts
+
+ - this part is usually highly customized since you may want to use different format to store your model.
+
+to be continued...
 
 
 
@@ -235,5 +277,6 @@ more description of scripts to add ...
 
 
 [1]: https://github.com/yiwenguo/Dynamic-Network-Surgery
+[2]: https://github.com/BVLC/caffe
 
 

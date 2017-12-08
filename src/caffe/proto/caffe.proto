@@ -648,6 +648,8 @@ message DNSConvolutionParameter {
   optional float power = 2 [default = 1];
   optional float c_rate = 3 [default = 1]; 
   optional float iter_stop = 4 [default = 10000000];  
+  optional float alpha_low = 7 [default = 0.95];
+  optional float alpha_high = 8 [default = 1.05];
   optional FillerParameter weight_mask_filler = 5; // The filler for the weight
   optional FillerParameter bias_mask_filler = 6;   // The filler for the bias  
 }
@@ -657,6 +659,8 @@ message CConvolutionParameter {
   optional float power = 2 [default = 1];
   optional float iter_stop = 3 [default = 10000000];  
   optional float c_rate = 4 [default = 3];    
+  optional float alpha_low = 7 [default = 0.95];
+  optional float alpha_high = 8 [default = 1.05];
   optional FillerParameter weight_mask_filler = 5; // The filler for the weight
   optional FillerParameter bias_mask_filler = 6;   // The filler for the bias  
 }
@@ -889,6 +893,8 @@ message DNSInnerProductParameter {
   optional float power = 2 [default = 1];
   optional float c_rate = 3 [default = 1]; 
   optional float iter_stop = 4 [default = 1000000];
+  optional float alpha_low = 7 [default = 0.95];
+  optional float alpha_high = 8 [default = 1.05];
   optional FillerParameter weight_mask_filler = 5; // The filler for the weight
   optional FillerParameter bias_mask_filler = 6;   // The filler for the bias  
 }
@@ -899,6 +905,8 @@ message CInnerProductParameter {
   optional float power = 2 [default = 1];
   optional float c_rate = 3 [default = 1];
   optional float iter_stop = 4 [default = 1000000];
+  optional float alpha_low = 7 [default = 0.95];
+  optional float alpha_high = 8 [default = 1.05];
   optional FillerParameter weight_mask_filler = 5; // The filler for the weight
   optional FillerParameter bias_mask_filler = 6;   // The filler for the bias
 }

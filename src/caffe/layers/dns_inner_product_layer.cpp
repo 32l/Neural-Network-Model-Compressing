@@ -88,6 +88,8 @@ void DNSInnerProductLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
   this->gamma_ = dns_inner_param.gamma(); 
   this->power_ = dns_inner_param.power();
   this->c_rate_ = dns_inner_param.c_rate();  
+  this->alpha_high_ = dns_inner_param.alpha_high();
+  this->alpha_low_ = dns_inner_param.alpha_low();
   this->iter_stop_ = dns_inner_param.iter_stop();    
   /**********************************************************/
 }

@@ -90,7 +90,7 @@ __global__ void CCNzeroCollect(const int n, const Dtype *mask,
 
 template <typename Dtype>
 __global__ void CCMaskCalc(const int n, const Dtype *wb, Dtype *mask, Dtype mu_,
-                           Dtype std_, Dtype r_, Dtyep low_, Dtype high_) {
+                           Dtype std_, Dtype r_, Dtype low_, Dtype high_) {
   CUDA_KERNEL_LOOP(index, n) {
     if (mask[index] == 1 &&
         fabs(wb[index]) <= low_ * max(mu_ + r_ * std_, Dtype(0)))

@@ -12,7 +12,8 @@ layer {
   }
   data_param {
     source: "examples/mnist/mnist_train_lmdb"
-    batch_size: 64
+    # batch_size: 64
+    batch_size: 128
     backend: LMDB
   }
 }
@@ -58,7 +59,7 @@ layer {
   dns_convolution_param {
     gamma: 0.0001
     power: 1
-    c_rate: 1
+    c_rate: 0.5
     iter_stop: 140000 
     weight_mask_filler {
       type: "constant"
@@ -106,7 +107,7 @@ layer {
   dns_convolution_param {
     gamma: 0.0001
     power: 1
-    c_rate: 2
+    c_rate: 3
     iter_stop: 140000  
     weight_mask_filler {
       type: "constant"
@@ -152,7 +153,7 @@ layer {
   dns_inner_product_param {
     gamma: 0.0001
     power: 1
-    c_rate: 2
+    c_rate: 2.5
     iter_stop: 140000  
     weight_mask_filler {
       type: "constant"
@@ -193,7 +194,7 @@ layer {
   dns_inner_product_param {
     gamma: 0.0001
     power: 1
-    c_rate: 1
+    c_rate: 3
     iter_stop: 140000
     weight_mask_filler {
       type: "constant"

@@ -10,7 +10,7 @@ layer {
   transform_param {
     mirror: true
     crop_size: 227
-    mean_file: "data/ilsvrc12/imagenet_mean.binaryproto"
+    mean_file: "/home/data/caffe-imagenet/imagenet_mean.binaryproto"
   }
   data_param {
     source: "/home/data/caffe-imagenet/ilsvrc12_train_lmdb"
@@ -29,7 +29,7 @@ layer {
   transform_param {
     mirror: false
     crop_size: 227
-    mean_file: "data/ilsvrc12/imagenet_mean.binaryproto"
+    mean_file: "/home/data/caffe-imagenet/imagenet_mean.binaryproto"
   }
   data_param {
     source: "/home/data/caffe-imagenet/ilsvrc12_val_lmdb"
@@ -67,7 +67,7 @@ layer {
     gamma: 0.0000125
     power: 1
     c_rate: -0.7
-    iter_stop: 450000  
+    iter_stop: 1000000  
     weight_mask_filler {
       type: "constant"
       value: 1
@@ -137,7 +137,7 @@ layer {
     gamma: 0.0000125
     power: 1
     c_rate: -0.15
-    iter_stop: 450000  
+    iter_stop: 1000000  
     weight_mask_filler {
       type: "constant"
       value: 1
@@ -206,7 +206,7 @@ layer {
     gamma: 0.0000125
     power: 1
     c_rate: 0.3
-    iter_stop: 450000  
+    iter_stop: 1000000  
     weight_mask_filler {
       type: "constant"
       value: 1
@@ -254,7 +254,7 @@ layer {
     gamma: 0.0000125
     power: 1
     c_rate: 0.25
-    iter_stop: 450000  
+    iter_stop: 1000000  
     weight_mask_filler {
       type: "constant"
       value: 1
@@ -302,7 +302,7 @@ layer {
     gamma: 0.0000125
     power: 1
     c_rate: 0.25
-    iter_stop: 450000  
+    iter_stop: 1000000  
     weight_mask_filler {
       type: "constant"
       value: 1

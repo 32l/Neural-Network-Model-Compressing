@@ -357,7 +357,7 @@ layer {
   dns_inner_product_param {
     gamma: 0.0000025
     power: 1
-    c_rate: 2.6  
+    c_rate: 0.4
     iter_stop: 1000000  
     weight_mask_filler {
       type: "constant"
@@ -411,7 +411,7 @@ layer {
   dns_inner_product_param {
     gamma: 0.0000025
     power: 1
-    c_rate: 1.5
+    c_rate: -0.1
     iter_stop: 1000000  
     weight_mask_filler {
       type: "constant"
@@ -465,7 +465,7 @@ layer {
   dns_inner_product_param {
     gamma: 0.0000025
     power: 1
-    c_rate: 2.7 
+    c_rate: -0.1
     iter_stop: 1000000  
     weight_mask_filler {
       type: "constant"

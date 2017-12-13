@@ -45,7 +45,7 @@ void DNSConvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
   this->power_ = dns_conv_param.power();
   this->c_rate_ = dns_conv_param.c_rate(); 
   this->alpha_low_ = dns_conv_param.alpha_low();
-  this->alpha_high_ = dns_conv_param.alhpa_high();
+  this->alpha_high_ = dns_conv_param.alpha_high();
   this->iter_stop_ = dns_conv_param.iter_stop();
   /**********************************************************/
 }

@@ -249,6 +249,7 @@ message SolverParameter {
   // for warm-up training 
   // iter: 0 ~ rampup_interval is warm-up training
   optional int32 rampup_interval = 42 [default = 0];
+  // the peak lr of rampup training process
   optional float rampup_lr = 43 [default = 0.];
 
   optional float min_lr = 44 [default = 0.];
